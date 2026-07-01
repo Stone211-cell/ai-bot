@@ -13,7 +13,7 @@ export class ElevenLabsService {
 
   constructor() {
     this.apiKey = process.env.ELEVENLABS_API_KEY || "";
-    this.voiceId = process.env.ELEVENLABS_VOICE_ID || "ThT5KcBeYPX3keUQqHPh"; // Default Dorothy or another good voice
+    this.voiceId = process.env.ELEVENLABS_VOICE_ID || "TX3OmTkNgV0Rwal3s77d"; // Liam (Premade Voice)
   }
 
   /**
@@ -43,13 +43,12 @@ export class ElevenLabsService {
             "xi-api-key": this.apiKey,
             "Content-Type": "application/json"
           },
-          responseType: "arraybuffer"
+          responseType: "stream"
         }
       );
 
-      fs.writeFileSync(tempFilePath, response.data);
-      elevenLogger.debug("ElevenLabs TTS successfully generated");
-      return createAudioResource(fs.createReadStream(tempFilePath));
+      elevenLogger.debug("ElevenLabs TTS streaming started");
+      return createAudioResource(response.data);
 
     } catch (error: any) {
       elevenLogger.error("ElevenLabs TTS failed. Falling back to EdgeTTS.", { 

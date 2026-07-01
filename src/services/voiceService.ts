@@ -134,7 +134,7 @@ class VoiceService {
       const opusStream = receiver.subscribe(userId, {
         end: {
           behavior: EndBehaviorType.AfterSilence,
-          duration: 1500, // รอเงียบ 1.5 วินาทีถึงตัดจบไฟล์
+          duration: 700, // รอเงียบ 0.7 วินาทีถึงตัดจบไฟล์ (ลดดีเลย์)
         },
       });
 
