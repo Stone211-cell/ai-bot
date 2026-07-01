@@ -5,16 +5,16 @@ import { logger } from "../utils/logger.js";
 const commands = [
   new SlashCommandBuilder()
     .setName("joinmom")
-    .setDescription("เรียกบอทเข้าห้องเสียงเพื่อพูดคุยด้วย AI (พูดโต้ตอบอัตโนมัติ)"),
+    .setDescription("เรียกบอทเข้าห้องเสียงเพื่อพูดคุย"),
   new SlashCommandBuilder()
     .setName("talkmom")
-    .setDescription("เรียกบอทเข้าห้องเสียงเพื่อพูดคุยด้วย AI (เหมือน joinmom)"),
+    .setDescription("เรียกบอทเข้าห้องเสียงเพื่อพูดคุย"),
   new SlashCommandBuilder()
     .setName("readmom")
-    .setDescription("เรียกบอทเข้าห้องเสียงเพื่ออ่านข้อความอย่างเดียว (ไม่มี AI ตอบ)"),
+    .setDescription("โหมดอ่านแชท"),
   new SlashCommandBuilder()
     .setName("leavemom")
-    .setDescription("เตะบอทออกจากห้องเสียง"),
+    .setDescription("เตะบอทออก"),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(config.discord.token);
