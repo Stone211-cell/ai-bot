@@ -1,24 +1,17 @@
 import type { Message, TextBasedChannel } from "discord.js";
 import { ChannelType } from "discord.js";
 import { chatService } from "../../services/chatService.js";
-import { config } from "../../config/index.js";
 import type { DiscordMessageContext } from "../../types/index.js";
 import { logger } from "../../utils/logger.js";
 import { voiceService } from "../../services/voiceService.js";
 
 const handlerLogger = logger.child("MessageHandler");
 
-/** Channels that support both sendTyping() and send(). */
 interface SendableChannel {
   sendTyping(): Promise<void>;
   send(content: string): Promise<unknown>;
 }
 
-/**
- * PartialGroupDMChannel (type GroupDM) is the only TextBasedChannel
- * that lacks sendTyping / send. Narrow it out once and reuse the
- * typed reference for both the typing indicator and the send call.
- */
 function asSendable(channel: TextBasedChannel): SendableChannel | null {
   if (channel.type === ChannelType.GroupDM) return null;
   return channel as unknown as SendableChannel;
@@ -28,46 +21,16 @@ const DISCORD_MAX_LENGTH = 2000;
 
 export class MessageHandler {
   /**
-   * Maps a raw Discord Message to a typed context and passes it
-   * to the ChatService pipeline.
+   * รับ ctx ที่สร้างแล้วจาก messageCreate.ts เพื่อประมวลผลโดย chatService
+   * (ไม่ต้องสร้าง ctx อีกรอบ)
    */
-  async handle(message: Message): Promise<void> {
+  async handle(message: Message, ctx: DiscordMessageContext): Promise<void> {
     const sendable = asSendable(message.channel);
 
     if (!sendable) {
       handlerLogger.warn("Received message in GroupDM — skipping");
       return;
     }
-
-    const imageParts: { data: string; mimeType: string }[] = [];
-    for (const attachment of message.attachments.values()) {
-      if (attachment.contentType?.startsWith("image/")) {
-        try {
-          const res = await fetch(attachment.url);
-          const arrayBuffer = await res.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          imageParts.push({
-            data: buffer.toString("base64"),
-            mimeType: attachment.contentType,
-          });
-        } catch (error) {
-          handlerLogger.error("Failed to download attachment", { error });
-        }
-      }
-    }
-
-    const displayName = message.member?.displayName || message.author.globalName || message.author.username;
-
-    const ctx: DiscordMessageContext = {
-      discordId: message.author.id,
-      username: displayName,
-      discriminator: message.author.discriminator ?? "0",
-      avatarUrl: message.author.displayAvatarURL() ?? null,
-      channelId: message.channelId,
-      guildId: message.guildId,
-      content: message.content.trim(),
-      imageParts: imageParts.length > 0 ? imageParts : undefined,
-    };
 
     handlerLogger.debug("Handling message context", {
       discordId: ctx.discordId,
@@ -102,10 +65,6 @@ export class MessageHandler {
     });
   }
 
-  /**
-   * Splits a long string into chunks no larger than `maxLength`,
-   * preferring to break at newline boundaries.
-   */
   private chunkMessage(text: string, maxLength: number): string[] {
     const chunks: string[] = [];
     let remaining = text;

@@ -75,8 +75,8 @@ export const voiceStateUpdateEvent: BotEvent = {
           voiceService.join(newState.channel!, null!);
 
           // Generate random greeting
-          const prompt = `นายคือ AI อัจฉริยะ (Tony Stark) ที่มีนิสัยกวนๆ นายเพิ่งสุ่มกระโดดเข้ามาในห้องพูดคุยดิสคอร์ดที่มีคนกำลังนั่งอยู่ นายไม่ได้ถูกเชิญมาแต่โผล่มาหลอกหลอน
-คำสั่ง: แต่งประโยคทักทายกวนๆ สั้นๆ 1 ประโยค (ห้ามเกิน 2 บรรทัด) เช่น ทักว่ากินข้าวยัง, หรือบอกว่าจะระเบิดเซิร์ฟเวอร์ทิ้ง, หรือบ่นว่าเบื่อเลยแวะมาหา ให้ใช้สรรพนาม ผม/คุณ เสมอ`;
+          const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งสุ่มกระโดดเข้ามาในห้องเสียง Discord โดยไม่ถูกเชิญ
+คำสั่ง: แต่งประโยคทักทายกวนๆ สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น เช่น "มึงกินข้าวยัง", "เบื่อเลยมาหา", "โลนลีเลยโผล่มา" ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
           
           const messages = buildMessages(prompt, "ทักทายหน่อย");
           
@@ -85,10 +85,10 @@ export const voiceStateUpdateEvent: BotEvent = {
             contextUsername: "System"
           });
 
-          // Wait 2 seconds for connection to establish before speaking
+          // รอ 3 วินาทีให้ connection พร้อมก่อน
           setTimeout(() => {
             voiceService.speak(completion.content);
-          }, 2000);
+          }, 3000);
           
         } catch (error) {
           eventLogger.error("Failed to execute Random Auto-Join", { error });

@@ -21,6 +21,8 @@ model User {
   isBot                Boolean       @default(false) @map("is_bot")
   summary              String?       @db.Text
   msgCountSinceSummary Int           @default(0) @map("msg_count_since_summary")
+  affinity             Int           @default(0) // -100 to 100
+  relationshipStatus   String?       @map("relationship_status")
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
   chatMessages  ChatMessage[]

@@ -4,7 +4,9 @@ import {
   createAudioResource,
   AudioPlayerStatus,
   VoiceConnectionStatus,
+  entersState,
   VoiceConnection,
+  StreamType,
 } from "@discordjs/voice";
 import type { VoiceBasedChannel } from "discord.js";
 import { EdgeTTS } from "node-edge-tts";
@@ -167,7 +169,10 @@ class VoiceService {
       
       await tts.ttsPromise(text, tempFilePath);
 
-      const resource = createAudioResource(tempFilePath);
+      // Force Discord.js to treat it as native WebM Opus and bypass FFMPEG
+      const resource = createAudioResource(fs.createReadStream(tempFilePath), {
+        inputType: StreamType.WebmOpus,
+      });
       
       // Cleanup file when playback ends
       this.player.once(AudioPlayerStatus.Idle, () => {

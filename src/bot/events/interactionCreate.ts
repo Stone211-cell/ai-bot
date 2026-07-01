@@ -50,16 +50,7 @@ export const interactionCreateEvent: BotEvent = {
         voiceService.join(voiceChannel, interaction.channelId);
         
         await interaction.deleteReply();
-        
-        // ให้ AI สร้างคำทักทายตอนเข้าห้องผ่านระบบเสียงแทน (ถ้าเปิดไมค์)
-        const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
-        if (isCreator) {
-          voiceService.speak("สวัสดีครับท่านบอส ผมมารายงานตัวแล้วครับ");
-        } else {
-          // สุ่มพูดทักทาย
-          const greetings = ["หวัดดีทุกคน", "เข้ามาละ", "มีใครอยู่ป่าว", "มาแล้วๆ ว่าไง"];
-          voiceService.speak(greetings[Math.floor(Math.random() * greetings.length)]);
-        }
+        // เงียบๆ เข้ามาเลย ไม่ต้องทักทาย
       } 
       
       else if (commandName === "readmom") {

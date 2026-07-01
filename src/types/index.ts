@@ -44,6 +44,7 @@ export interface ChatCompletionOptions {
   maxTokens?: number;
   temperature?: number;
   contextUsername?: string;
+  guildId?: string | null; // ส่งไปให้ AI tools (เช่น kick_member) ใช้งาน
 }
 
 export interface ChatCompletionResult {

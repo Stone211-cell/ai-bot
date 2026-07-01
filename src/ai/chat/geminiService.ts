@@ -89,7 +89,8 @@ export class GeminiService implements IGeminiService {
           const functionResult = await handleFunctionCall(
             call.name!, 
             call.args as Record<string, any>, 
-            options.contextUsername || "unknown"
+            options.contextUsername || "unknown",
+            options.guildId ?? null,
           );
 
           // Append to contents and call again

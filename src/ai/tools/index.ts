@@ -1,6 +1,7 @@
 import { knowledgeRepository } from "../../repositories/knowledgeRepository.js";
 import { userRepository } from "../../repositories/userRepository.js";
 import { chatRepository } from "../../repositories/chatRepository.js";
+import { getClient } from "../../bot/client.js";
 import { logger } from "../../utils/logger.js";
 import type { Type } from "@google/genai";
 import { search } from "duck-duck-scrape";
@@ -62,17 +63,47 @@ export const functionDeclarations = [
       required: ["query"],
     },
   },
+  {
+    name: "kick_member",
+    description: "Kick (เตะ) a member from the Discord server. ONLY bibi.ubu can use this command. Use when bibi.ubu explicitly tells you to kick/เตะ someone out of the server.",
+    parameters: {
+      type: "OBJECT" as unknown as Type,
+      properties: {
+        caller_username: {
+          type: "STRING" as unknown as Type,
+          description: "Username of the person requesting the kick — must be bibi.ubu",
+        },
+        target_username: {
+          type: "STRING" as unknown as Type,
+          description: "Display name or username of the person to kick",
+        },
+        reason: {
+          type: "STRING" as unknown as Type,
+          description: "Reason for the kick (optional)",
+        },
+      },
+      required: ["caller_username", "target_username"],
+    },
+  },
 ];
 
-export async function handleFunctionCall(name: string, args: Record<string, any>, contextUser: string): Promise<string> {
+export async function handleFunctionCall(
+  name: string,
+  args: Record<string, any>,
+  contextUser: string,
+  guildId?: string | null,
+): Promise<string> {
   toolsLogger.info("Function called", { name, args, contextUser });
 
   switch (name) {
+    // ── learn_fact ───────────────────────────────────────────────────────────
     case "learn_fact": {
       const { topic, fact } = args;
       await knowledgeRepository.addFact(topic, fact);
       return `Successfully memorized fact about ${topic}.`;
     }
+
+    // ── clear_memory ─────────────────────────────────────────────────────────
     case "clear_memory": {
       const { caller_username, password, target_discord_id } = args;
       if (caller_username !== "bibi.ubu" || contextUser !== "bibi.ubu") {
@@ -81,18 +112,22 @@ export async function handleFunctionCall(name: string, args: Record<string, any>
       if (password !== "19052006") {
         return "ERROR: Incorrect password.";
       }
-      
       const user = await userRepository.findByDiscordId(target_discord_id);
       if (!user) return "User not found.";
       await userRepository.updateSummary(target_discord_id, "");
       await chatRepository.deleteByUserId(user.id);
       return `Successfully cleared memory for user ${target_discord_id}.`;
     }
+
+    // ── search_web ───────────────────────────────────────────────────────────
     case "search_web": {
       const { query } = args;
       try {
         const results = await search(query);
-        const topResults = results.results.slice(0, 3).map((r, i) => `${i + 1}. ${r.title}\n${r.description}\nURL: ${r.url}`).join("\n\n");
+        const topResults = results.results
+          .slice(0, 3)
+          .map((r, i) => `${i + 1}. ${r.title}\n${r.description}\nURL: ${r.url}`)
+          .join("\n\n");
         if (!topResults) return "No search results found.";
         return `Search results for "${query}":\n\n${topResults}`;
       } catch (error) {
@@ -100,6 +135,65 @@ export async function handleFunctionCall(name: string, args: Record<string, any>
         return "Search failed. Could not retrieve results.";
       }
     }
+
+    // ── kick_member ──────────────────────────────────────────────────────────
+    case "kick_member": {
+      const { caller_username, target_username, reason } = args;
+
+      // Permission check: เฉพาะ bibi.ubu เท่านั้น (ตรวจทั้ง arg และ contextUser จริงจาก Discord)
+      if (caller_username !== "bibi.ubu" || contextUser !== "bibi.ubu") {
+        toolsLogger.warn("Kick denied: not bibi.ubu", { caller_username, contextUser });
+        return "ERROR: แกไม่ใช่ bibi.ubu กูไม่เตะให้หรอก";
+      }
+
+      if (!guildId) {
+        return "ERROR: ไม่รู้ว่า server ไหน ลองส่งข้อความในห้องของ server อีกทีได้เลย";
+      }
+
+      try {
+        const client = getClient();
+        const guild = await client.guilds.fetch(guildId);
+        if (!guild) return "ERROR: ไม่เจอ server";
+
+        // ค้นหา member จาก display name / username / globalName
+        const members = await guild.members.fetch();
+        const target = members.find(
+          (m) =>
+            m.displayName.toLowerCase() === target_username.toLowerCase() ||
+            m.user.username.toLowerCase() === target_username.toLowerCase() ||
+            (m.user.globalName?.toLowerCase() ?? "") === target_username.toLowerCase(),
+        );
+
+        if (!target) {
+          return `ERROR: ไม่เจอคนชื่อ "${target_username}" ใน server`;
+        }
+
+        // Safety checks
+        if (target.user.id === client.user?.id) {
+          return "ERROR: กูไม่เตะตัวเองหรอก";
+        }
+        if (target.user.username === "bibi.ubu") {
+          return "ERROR: กูไม่เตะลูกพี่หรอก แกบ้าเหรอ";
+        }
+
+        const kickReason = reason ?? "สั่งโดย bibi.ubu";
+        await target.kick(kickReason);
+
+        toolsLogger.info("Member kicked successfully", {
+          target: target.user.username,
+          by: caller_username,
+          reason: kickReason,
+        });
+        return `เตะ ${target.displayName} (${target.user.username}) ออกไปแล้ว 👟`;
+      } catch (error: any) {
+        toolsLogger.error("Kick failed", { error });
+        if (error?.code === 50013) {
+          return "ERROR: บอทไม่มีสิทธิ์เตะคนนี้ — ต้องให้บอทมี role สูงกว่าเขา และมี permission KICK_MEMBERS";
+        }
+        return `ERROR: เตะไม่ได้ — ${error?.message ?? "unknown error"}`;
+      }
+    }
+
     default:
       return `Unknown function ${name}`;
   }

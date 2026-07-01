@@ -7,6 +7,9 @@ export interface IUserRepository {
   findByDiscordId(discordId: string): Promise<User | null>;
   findById(discordId: string): Promise<User | null>;
   upsert(dto: CreateUserDto): Promise<User>;
+  getRelationshipHighlights(limit?: number): Promise<{ favoriteUsers: string[]; dislikedUsers: string[] }>;
+  updateAffinity(discordId: string, delta: number, relationshipStatus?: string | null): Promise<User>;
+  setRelationshipStatus(discordId: string, relationshipStatus: string | null): Promise<User>;
   updateSummary(discordId: string, summary: string): Promise<User>;
   incrementMsgCount(discordId: string): Promise<User>;
   resetMsgCount(discordId: string): Promise<User>;
@@ -22,6 +25,57 @@ export class UserRepository implements IUserRepository {
   findById(id: string): Promise<User | null> {
     return withDbError("User.findById", { id }, () =>
       prisma.user.findUnique({ where: { id } }),
+    );
+  }
+
+  async getRelationshipHighlights(limit = 5): Promise<{ favoriteUsers: string[]; dislikedUsers: string[] }> {
+    return withDbError("User.getRelationshipHighlights", { limit }, async () => {
+      const [favoriteUsers, dislikedUsers] = await prisma.$transaction([
+        prisma.user.findMany({
+          where: { affinity: { gt: 0 } },
+          orderBy: [{ affinity: "desc" }, { updatedAt: "desc" }],
+          take: limit,
+          select: { username: true },
+        }),
+        prisma.user.findMany({
+          where: { affinity: { lt: 0 } },
+          orderBy: [{ affinity: "asc" }, { updatedAt: "desc" }],
+          take: limit,
+          select: { username: true },
+        }),
+      ]);
+
+      return {
+        favoriteUsers: favoriteUsers.map((user) => user.username),
+        dislikedUsers: dislikedUsers.map((user) => user.username),
+      };
+    });
+  }
+
+  async updateAffinity(discordId: string, delta: number, relationshipStatus?: string | null): Promise<User> {
+    return withDbError("User.updateAffinity", { discordId, delta }, async () => {
+      const current = await prisma.user.findUnique({
+        where: { discordId },
+        select: { affinity: true },
+      });
+      const nextAffinity = Math.max(-100, Math.min(100, (current?.affinity ?? 0) + delta));
+
+      return prisma.user.update({
+        where: { discordId },
+        data: {
+          affinity: nextAffinity,
+          ...(relationshipStatus !== undefined ? { relationshipStatus } : {}),
+        },
+      });
+    });
+  }
+
+  setRelationshipStatus(discordId: string, relationshipStatus: string | null): Promise<User> {
+    return withDbError("User.setRelationshipStatus", { discordId, relationshipStatus }, () =>
+      prisma.user.update({
+        where: { discordId },
+        data: { relationshipStatus },
+      }),
     );
   }
 

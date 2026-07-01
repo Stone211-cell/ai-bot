@@ -15,6 +15,7 @@ const clientOptions: ClientOptions = {
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
   ],
   partials: [Partials.Channel, Partials.Message],
 };

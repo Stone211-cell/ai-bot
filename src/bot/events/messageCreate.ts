@@ -5,9 +5,10 @@ import { handleError } from "../../utils/errorHandler.js";
 import { logger } from "../../utils/logger.js";
 import { messageHandler } from "../handlers/messageHandler.js";
 import { voiceService } from "../../services/voiceService.js";
+import { chatService } from "../../services/chatService.js";
+import type { DiscordMessageContext } from "../../types/index.js";
 
 const eventLogger = logger.child("MessageCreateEvent");
-const userCooldowns = new Map<string, number>();
 
 export const messageCreateEvent: BotEvent = {
   name: Events.MessageCreate,
@@ -17,59 +18,119 @@ export const messageCreateEvent: BotEvent = {
     const message = args[0] as Message;
 
     // ── Guards ─────────────────────────────────────────────────────────────
-    // Ignore all bots (including itself)
     if (message.author.bot) return;
+    if (!message.guild) return;
 
-    // Ignore DMs
-    if (!message.guild) {
-      eventLogger.debug("Ignored DM message", {
-        authorId: message.author.id,
-      });
-      return;
-    }
+    // ── Channel filter ────────────────────────────────────────────────────
+    if (
+      config.discord.allowedTextChannelIds.length > 0 &&
+      !config.discord.allowedTextChannelIds.includes(message.channelId)
+    ) return;
 
-    // ── Channel filter (whitelist/blacklist) ──────────────────────────────────
-    if (config.discord.allowedTextChannelIds.length > 0 && !config.discord.allowedTextChannelIds.includes(message.channelId)) {
-      return;
-    }
+    if (config.discord.ignoredTextChannelIds.includes(message.channelId)) return;
 
-    if (config.discord.ignoredTextChannelIds.includes(message.channelId)) {
-      return;
-    }
-
-    // Ignore empty messages
     if (!message.content.trim()) return;
 
     // ── Dictation Mode Hook ──────────────────────────────────────────────────
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {
-      // Clean content for reading (remove emojis and URLs)
       let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
-      textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim(); // Remove custom discord emojis
+      textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
       if (textToRead) {
         voiceService.speak(`${message.author.username} บอกว่า, ${textToRead}`);
       }
-      return; // Do not pass to AI chatService in Dictation mode
+      return;
     }
 
-    eventLogger.debug("Received message", {
+    const displayName = message.member?.displayName || message.author.globalName || message.author.username;
+    const botId = message.client.user?.id;
+
+    // ── ตรวจว่าบอทถูกเรียกหรือเปล่า ─────────────────────────────────────────
+    const isMentioned = botId ? message.mentions.has(botId) : false;
+
+    // ตรวจว่า reply มาที่บอทโดยตรง
+    let isReplyToBot = false;
+    if (message.reference?.messageId) {
+      try {
+        const refMsg = await message.channel.messages.fetch(message.reference.messageId);
+        isReplyToBot = refMsg.author.id === botId;
+      } catch {
+        // ถ้า fetch ไม่ได้ ถือว่าไม่ได้ reply บอท
+      }
+    }
+
+    const botCalledByName = /ไมเคิล|michael|มค|บอท/.test(message.content.toLowerCase());
+
+    const botWasCalled = isMentioned || isReplyToBot || botCalledByName;
+
+    // ── ถ้าไม่ได้เรียกบอท → บันทึก context แล้วออก ─────────────────────────
+    if (!botWasCalled) {
+      // บันทึกข้อความลง DB เพื่อเป็น context ให้บอทตอนถูกเรียกในภายหลัง
+      const ctx: DiscordMessageContext = {
+        discordId: message.author.id,
+        username: displayName,
+        discriminator: message.author.discriminator ?? "0",
+        avatarUrl: message.author.displayAvatarURL() ?? null,
+        channelId: message.channelId,
+        guildId: message.guildId,
+        content: message.content.trim(),
+      };
+
+      // บันทึก background ไม่ต้อง await
+      chatService.recordMessage(ctx).catch((err) => {
+        eventLogger.debug("Failed to record passive message", { error: err });
+      });
+      return;
+    }
+
+    // ── บอทถูกเรียก → ส่งไป AI ─────────────────────────────────────────────
+    eventLogger.debug("Bot was called", {
       authorId: message.author.id,
       channelId: message.channelId,
-      guildId: message.guildId,
-      contentLength: message.content.length,
+      isMentioned,
+      isReplyToBot,
+      botCalledByName,
     });
 
+    // ลบ mention ออกจาก content เพื่อให้ AI ไม่เห็น <@123456789>
+    const cleanContent = message.content
+      .replace(/<@!?\d+>/g, "")
+      .trim();
+
+    const imageParts: { data: string; mimeType: string }[] = [];
+    for (const attachment of message.attachments.values()) {
+      if (attachment.contentType?.startsWith("image/")) {
+        try {
+          const res = await fetch(attachment.url);
+          const arrayBuffer = await res.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          imageParts.push({
+            data: buffer.toString("base64"),
+            mimeType: attachment.contentType,
+          });
+        } catch (error) {
+          eventLogger.error("Failed to download attachment", { error });
+        }
+      }
+    }
+
+    const ctx: DiscordMessageContext = {
+      discordId: message.author.id,
+      username: displayName,
+      discriminator: message.author.discriminator ?? "0",
+      avatarUrl: message.author.displayAvatarURL() ?? null,
+      channelId: message.channelId,
+      guildId: message.guildId,
+      content: cleanContent || message.content.trim(), // fallback ถ้า clean แล้วว่าง
+      imageParts: imageParts.length > 0 ? imageParts : undefined,
+    };
+
     try {
-      await messageHandler.handle(message);
+      await messageHandler.handle(message, ctx);
     } catch (error) {
       handleError(error, "MessageCreateEvent");
-
-      // Attempt to reply with a user-facing error message
       try {
-        await message.reply(
-          "❌ An error occurred while processing your message. Please try again.",
-        );
+        await message.reply("❌ เกิด error ขึ้น ลองใหม่นะ");
       } catch {
-        // If the reply itself fails, just log silently
         eventLogger.warn("Could not send error reply to user");
       }
     }
