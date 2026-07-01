@@ -231,9 +231,8 @@ class VoiceService {
 
       voiceLogger.debug(`TTS file created: ${stat.size} bytes`);
 
-      const resource = createAudioResource(fs.createReadStream(tempFilePath), {
-        inputType: StreamType.WebmOpus,
-      });
+      // ให้ Discord ใช้ FFmpeg แปลงเป็น Opus อัตโนมัติ ปลอดภัยกว่าการ force type
+      const resource = createAudioResource(fs.createReadStream(tempFilePath));
 
       // Cleanup ไฟล์ชั่วคราวเมื่อเล่นจบ
       const cleanup = () => {
