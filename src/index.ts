@@ -8,16 +8,11 @@
  *
  * NO business logic lives here.
  */
+import "./preload.js"; // MUST BE FIRST
 import { registerGlobalErrorHandlers } from "./utils/errorHandler.js";
 import { startBot, registerShutdownHandlers } from "./bot/index.js";
 import { logger } from "./utils/logger.js";
-import ffmpegPath from "ffmpeg-static";
 import express from "express";
-
-// Ensure FFMPEG is available for Discord.js Voice
-if (ffmpegPath) {
-  process.env.FFMPEG_PATH = ffmpegPath;
-}
 
 const appLogger = logger.child("App");
 
