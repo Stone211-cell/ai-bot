@@ -4,6 +4,7 @@ import { logger } from "../../utils/logger.js";
 import { voiceService } from "../../services/voiceService.js";
 import { geminiService } from "../../ai/chat/geminiService.js";
 import { buildMessages } from "../../ai/prompt/promptBuilder.js";
+import { config } from "../../config/index.js";
 
 const eventLogger = logger.child("VoiceStateUpdateEvent");
 
@@ -56,6 +57,14 @@ export const voiceStateUpdateEvent: BotEvent = {
       !newState.member?.user.bot &&
       !botVoiceChannel // Bot must not be in a voice channel already
     ) {
+      // Check Voice Filters
+      if (config.discord.allowedVoiceChannelIds.length > 0 && !config.discord.allowedVoiceChannelIds.includes(newState.channelId)) {
+        return;
+      }
+      if (config.discord.ignoredVoiceChannelIds.includes(newState.channelId)) {
+        return;
+      }
+
       // 15% chance to auto-join
       const roll = Math.random();
       if (roll <= 0.15) {

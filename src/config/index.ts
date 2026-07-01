@@ -21,11 +21,11 @@ function optionalEnvList(key: string): string[] {
 export const config = {
   discord: {
     token: requireEnv("DISCORD_TOKEN"),
-    clientId: requireEnv("DISCORD_CLIENT_ID"),
-    /** ถ้าว่าง = ตอบทุกช่อง | ถ้ามี ID = ตอบเฉพาะช่องนั้น */
-    allowedChannelIds: optionalEnvList("ALLOWED_CHANNEL_IDS"),
-    /** ช่องที่ bot จะไม่ตอบ (blacklist) */
-    ignoredChannelIds: optionalEnvList("IGNORED_CHANNEL_IDS"),
+    clientId: optionalEnv("DISCORD_CLIENT_ID", ""),
+    allowedTextChannelIds: process.env.ALLOWED_TEXT_CHANNEL_IDS?.split(",").map((id) => id.trim()).filter(Boolean) || [],
+    ignoredTextChannelIds: process.env.IGNORED_TEXT_CHANNEL_IDS?.split(",").map((id) => id.trim()).filter(Boolean) || [],
+    allowedVoiceChannelIds: process.env.ALLOWED_VOICE_CHANNEL_IDS?.split(",").map((id) => id.trim()).filter(Boolean) || [],
+    ignoredVoiceChannelIds: process.env.IGNORED_VOICE_CHANNEL_IDS?.split(",").map((id) => id.trim()).filter(Boolean) || [],
   },
 
   gemini: {

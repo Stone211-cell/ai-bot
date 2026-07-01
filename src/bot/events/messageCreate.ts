@@ -28,21 +28,12 @@ export const messageCreateEvent: BotEvent = {
       return;
     }
 
-    // ── Channel filter (whitelist) ────────────────────────────────────────────
-    const { allowedChannelIds, ignoredChannelIds } = config.discord;
-
-    if (allowedChannelIds.length > 0 && !allowedChannelIds.includes(message.channelId)) {
-      eventLogger.debug("Ignored message — channel not in whitelist", {
-        channelId: message.channelId,
-      });
+    // ── Channel filter (whitelist/blacklist) ──────────────────────────────────
+    if (config.discord.allowedTextChannelIds.length > 0 && !config.discord.allowedTextChannelIds.includes(message.channelId)) {
       return;
     }
 
-    // ── Channel filter (blacklist) ────────────────────────────────────────────
-    if (ignoredChannelIds.includes(message.channelId)) {
-      eventLogger.debug("Ignored message — channel is blacklisted", {
-        channelId: message.channelId,
-      });
+    if (config.discord.ignoredTextChannelIds.includes(message.channelId)) {
       return;
     }
 
