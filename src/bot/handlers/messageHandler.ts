@@ -49,6 +49,7 @@ export class MessageHandler {
 
     if (voiceService.isInVoice() && voiceService.getMode() === "talk") {
       voiceService.speak(result.reply);
+      return; // ไม่ต้องส่งข้อความลงแชท
     }
 
     if (result.reply.length <= DISCORD_MAX_LENGTH) {
