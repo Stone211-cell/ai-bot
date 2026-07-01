@@ -73,6 +73,15 @@ class VoiceService {
       voiceLogger.debug(`Voice status changed from ${oldState.status} to ${newState.status} ${networkStateChange}`);
     });
 
+    // เปิดโหมด Debug พิมพ์ Error เชิงลึกแบบละเอียดที่สุด
+    this.connection.on("debug", (message) => {
+      voiceLogger.debug(`[VOICE_INTERNAL] ${message}`);
+    });
+    
+    this.connection.on("error", (error) => {
+      voiceLogger.error(`[VOICE_CRITICAL_ERROR]`, { error: error.message, stack: error.stack });
+    });
+
     // รอให้ connection พร้อมก่อน subscribe player
     try {
       await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);

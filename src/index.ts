@@ -14,6 +14,7 @@ import { startBot, registerShutdownHandlers } from "./bot/index.js";
 import { logger } from "./utils/logger.js";
 import express from "express";
 import dns from "dns";
+import { generateDependencyReport } from "@discordjs/voice";
 
 // แก้ปัญหา Discord Voice (UDP Timeout) ที่เกิดจาก Node.js พยายามใช้ IPv6 
 dns.setDefaultResultOrder('ipv4first');
@@ -22,6 +23,7 @@ const appLogger = logger.child("App");
 
 async function main(): Promise<void> {
   appLogger.info("=== Discord AI Bot ===");
+  appLogger.debug(`Voice Dependencies:\n${generateDependencyReport()}`);
 
   registerGlobalErrorHandlers();
   registerShutdownHandlers();
