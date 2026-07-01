@@ -45,10 +45,10 @@ export const interactionCreateEvent: BotEvent = {
           return;
         }
         await interaction.deferReply({ ephemeral: true });
-        
+
         voiceService.setMode("talk");
-        voiceService.join(voiceChannel, interaction.channelId);
-        
+        await voiceService.join(voiceChannel, interaction.channelId);
+
         await interaction.deleteReply();
         // เงียบๆ เข้ามาเลย ไม่ต้องทักทาย
       } 
@@ -59,10 +59,10 @@ export const interactionCreateEvent: BotEvent = {
           return;
         }
         await interaction.deferReply({ ephemeral: true });
-        
+
         voiceService.setMode("read");
-        voiceService.join(voiceChannel, interaction.channelId);
-        
+        await voiceService.join(voiceChannel, interaction.channelId);
+
         await interaction.deleteReply();
         voiceService.speak("โหมดอ่านข้อความทำงานแล้ว พิมพ์อะไรมาเดี๋ยวอ่านให้ฟัง");
       } 
