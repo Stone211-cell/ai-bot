@@ -13,6 +13,10 @@ import { registerGlobalErrorHandlers } from "./utils/errorHandler.js";
 import { startBot, registerShutdownHandlers } from "./bot/index.js";
 import { logger } from "./utils/logger.js";
 import express from "express";
+import dns from "dns";
+
+// แก้ปัญหา Discord Voice (UDP Timeout) ที่เกิดจาก Node.js พยายามใช้ IPv6 
+dns.setDefaultResultOrder('ipv4first');
 
 const appLogger = logger.child("App");
 
