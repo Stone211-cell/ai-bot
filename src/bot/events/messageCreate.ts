@@ -4,6 +4,7 @@ import { config } from "../../config/index.js";
 import { handleError } from "../../utils/errorHandler.js";
 import { logger } from "../../utils/logger.js";
 import { messageHandler } from "../handlers/messageHandler.js";
+import { voiceService } from "../../services/voiceService.js";
 
 const eventLogger = logger.child("MessageCreateEvent");
 
@@ -46,6 +47,24 @@ export const messageCreateEvent: BotEvent = {
 
     // Ignore empty messages
     if (!message.content.trim()) return;
+
+    // ── Voice Commands ─────────────────────────────────────────────────────────
+    if (message.content.trim() === "/joinmom") {
+      const voiceChannel = message.member?.voice.channel;
+      if (!voiceChannel) {
+        await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
+        return;
+      }
+      voiceService.join(voiceChannel);
+      await message.reply("🎙️ เข้าช่องเสียงมาแล้ว! พิมพ์อะไรมาฉันก็จะพูดตามนั้น (ยกเว้นตอนฉันขี้เกียจตอบ)");
+      return;
+    }
+
+    if (message.content.trim() === "/leavemom") {
+      voiceService.leave();
+      await message.reply("👋 ไปละ บาย");
+      return;
+    }
 
     eventLogger.debug("Received message", {
       authorId: message.author.id,

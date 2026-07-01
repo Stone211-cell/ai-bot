@@ -3,6 +3,7 @@ import { userRepository } from "../../repositories/userRepository.js";
 import { chatRepository } from "../../repositories/chatRepository.js";
 import { logger } from "../../utils/logger.js";
 import type { Type } from "@google/genai";
+import { search } from "duck-duck-scrape";
 
 const toolsLogger = logger.child("AITools");
 
@@ -47,6 +48,20 @@ export const functionDeclarations = [
       required: ["caller_username", "password", "target_discord_id"],
     },
   },
+  {
+    name: "search_web",
+    description: "Search the web using DuckDuckGo to find real-time information, news, or facts.",
+    parameters: {
+      type: "OBJECT" as unknown as Type,
+      properties: {
+        query: {
+          type: "STRING" as unknown as Type,
+          description: "The search query to look up on the internet.",
+        },
+      },
+      required: ["query"],
+    },
+  },
 ];
 
 export async function handleFunctionCall(name: string, args: Record<string, any>, contextUser: string): Promise<string> {
@@ -69,10 +84,21 @@ export async function handleFunctionCall(name: string, args: Record<string, any>
       
       const user = await userRepository.findByDiscordId(target_discord_id);
       if (!user) return "User not found.";
-      
       await userRepository.updateSummary(target_discord_id, "");
       await chatRepository.deleteByUserId(user.id);
       return `Successfully cleared memory for user ${target_discord_id}.`;
+    }
+    case "search_web": {
+      const { query } = args;
+      try {
+        const results = await search(query);
+        const topResults = results.results.slice(0, 3).map((r, i) => `${i + 1}. ${r.title}\n${r.description}\nURL: ${r.url}`).join("\n\n");
+        if (!topResults) return "No search results found.";
+        return `Search results for "${query}":\n\n${topResults}`;
+      } catch (error) {
+        toolsLogger.error("Search failed", { error });
+        return "Search failed. Could not retrieve results.";
+      }
     }
     default:
       return `Unknown function ${name}`;

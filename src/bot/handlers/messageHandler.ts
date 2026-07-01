@@ -3,6 +3,7 @@ import { ChannelType } from "discord.js";
 import { chatService } from "../../services/chatService.js";
 import type { DiscordMessageContext } from "../../types/index.js";
 import { logger } from "../../utils/logger.js";
+import { voiceService } from "../../services/voiceService.js";
 
 const handlerLogger = logger.child("MessageHandler");
 
@@ -74,6 +75,15 @@ export class MessageHandler {
     await sendable.sendTyping();
 
     const result = await chatService.processMessage(ctx);
+
+    if (result.reply.includes("[IGNORE]")) {
+      handlerLogger.debug("AI decided to ignore the message");
+      return;
+    }
+
+    if (voiceService.isInVoice()) {
+      voiceService.speak(result.reply);
+    }
 
     if (result.reply.length <= DISCORD_MAX_LENGTH) {
       await message.reply(result.reply);
