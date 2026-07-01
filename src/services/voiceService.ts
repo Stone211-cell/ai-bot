@@ -17,6 +17,7 @@ class VoiceService {
   private player = createAudioPlayer();
   private isPlaying = false;
   private queue: string[] = [];
+  private mode: "read" | "talk" = "talk";
 
   constructor() {
     this.player.on(AudioPlayerStatus.Idle, () => {
@@ -57,6 +58,14 @@ class VoiceService {
     }
   }
 
+  public setMode(newMode: "read" | "talk") {
+    this.mode = newMode;
+  }
+
+  public getMode(): "read" | "talk" {
+    return this.mode;
+  }
+
   public speak(text: string) {
     if (!this.connection) {
       voiceLogger.warn("Cannot speak, not in a voice channel.");
@@ -64,7 +73,12 @@ class VoiceService {
     }
     
     // Clean text for TTS (remove URLs, long emojis, etc)
-    const cleanText = text.replace(/https?:\/\/\S+/g, "").substring(0, 200);
+    let cleanText = text.replace(/https?:\/\/\S+/g, "").substring(0, 200);
+    
+    // Simulate breathing/pauses by replacing spaces with commas
+    // Thai doesn't use spaces between words, only between sentences/clauses
+    cleanText = cleanText.replace(/\s+/g, ", ");
+    
     if (!cleanText.trim()) return;
 
     this.queue.push(cleanText);

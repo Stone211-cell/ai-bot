@@ -7,6 +7,7 @@ import { messageHandler } from "../handlers/messageHandler.js";
 import { voiceService } from "../../services/voiceService.js";
 
 const eventLogger = logger.child("MessageCreateEvent");
+const userCooldowns = new Map<string, number>();
 
 export const messageCreateEvent: BotEvent = {
   name: Events.MessageCreate,
@@ -49,14 +50,27 @@ export const messageCreateEvent: BotEvent = {
     if (!message.content.trim()) return;
 
     // ── Voice Commands ─────────────────────────────────────────────────────────
-    if (message.content.trim() === "/joinmom") {
+    if (message.content.trim() === "/readmom" || message.content.trim() === "/joinmom") {
       const voiceChannel = message.member?.voice.channel;
       if (!voiceChannel) {
         await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
         return;
       }
+      voiceService.setMode("read");
       voiceService.join(voiceChannel);
-      await message.reply("🎙️ เข้าช่องเสียงมาแล้ว! พิมพ์อะไรมาฉันก็จะพูดตามนั้น (ยกเว้นตอนฉันขี้เกียจตอบ)");
+      await message.reply("🎙️ โหมดอ่านข้อความ: พิมพ์อะไรมาฉันก็จะอ่านตามนั้นเป๊ะๆ (ไม่มี AI ตอบโต้)");
+      return;
+    }
+
+    if (message.content.trim() === "/talkmom") {
+      const voiceChannel = message.member?.voice.channel;
+      if (!voiceChannel) {
+        await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
+        return;
+      }
+      voiceService.setMode("talk");
+      voiceService.join(voiceChannel);
+      await message.reply("🤖 โหมด AI พูดคุย: ฉันจะคิดคำตอบและพูดคุยกับทุกคนอย่างเป็นธรรมชาติ!");
       return;
     }
 
@@ -64,6 +78,28 @@ export const messageCreateEvent: BotEvent = {
       voiceService.leave();
       await message.reply("👋 ไปละ บาย");
       return;
+    }
+
+    // ── Anti-Spam (5s Cooldown) ──────────────────────────────────────────────
+    if (message.author.username !== "bibi.ubu") {
+      const now = Date.now();
+      const lastMessageTime = userCooldowns.get(message.author.id) || 0;
+      if (now - lastMessageTime < 5000) {
+        // Ignore the message if sent within 5 seconds of the last one
+        return;
+      }
+      userCooldowns.set(message.author.id, now);
+    }
+
+    // ── Dictation Mode Hook ──────────────────────────────────────────────────
+    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
+      // Clean content for reading (remove emojis and URLs)
+      let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
+      textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim(); // Remove custom discord emojis
+      if (textToRead) {
+        voiceService.speak(`${message.author.username} บอกว่า, ${textToRead}`);
+      }
+      return; // Do not pass to AI chatService in Dictation mode
     }
 
     eventLogger.debug("Received message", {
