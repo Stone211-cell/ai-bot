@@ -56,9 +56,11 @@ export class MessageHandler {
       }
     }
 
+    const displayName = message.member?.displayName || message.author.globalName || message.author.username;
+
     const ctx: DiscordMessageContext = {
       discordId: message.author.id,
-      username: message.author.username,
+      username: displayName,
       discriminator: message.author.discriminator ?? "0",
       avatarUrl: message.author.displayAvatarURL() ?? null,
       channelId: message.channelId,
