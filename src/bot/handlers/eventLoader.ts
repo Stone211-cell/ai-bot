@@ -6,6 +6,7 @@ import { logger } from "../../utils/logger.js";
 import { readyEvent } from "../events/ready.js";
 import { messageCreateEvent } from "../events/messageCreate.js";
 import { interactionCreateEvent } from "../events/interactionCreate.js";
+import { voiceStateUpdateEvent } from "../events/voiceStateUpdate.js";
 
 const handlerLogger = logger.child("EventLoader");
 
@@ -13,7 +14,7 @@ const handlerLogger = logger.child("EventLoader");
  * Registers all event handlers on the Discord client.
  */
 export function loadEvents(client: Client): void {
-  const events = [readyEvent, messageCreateEvent, interactionCreateEvent];
+  const events = [readyEvent, messageCreateEvent, interactionCreateEvent, voiceStateUpdateEvent];
 
   for (const event of events) {
     if (event.once) {

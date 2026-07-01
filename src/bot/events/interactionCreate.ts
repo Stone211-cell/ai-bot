@@ -26,7 +26,7 @@ export const interactionCreateEvent: BotEvent = {
           return;
         }
         voiceService.setMode("talk");
-        voiceService.join(voiceChannel);
+        voiceService.join(voiceChannel, interaction.channelId);
         await interaction.reply("🤖 โหมด AI พูดคุย: ฉันจะคิดคำตอบและพูดคุยกับทุกคนอย่างเป็นธรรมชาติ!");
       } 
       
@@ -36,7 +36,7 @@ export const interactionCreateEvent: BotEvent = {
           return;
         }
         voiceService.setMode("read");
-        voiceService.join(voiceChannel);
+        voiceService.join(voiceChannel, interaction.channelId);
         await interaction.reply("🎙️ โหมดอ่านข้อความ: พิมพ์อะไรมาฉันก็จะอ่านตามนั้นเป๊ะๆ (ไม่มี AI ตอบโต้)");
       } 
       

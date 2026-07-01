@@ -18,6 +18,8 @@ class VoiceService {
   private isPlaying = false;
   private queue: string[] = [];
   private mode: "read" | "talk" = "talk";
+  private lastTextChannelId: string | null = null;
+  private leaveTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     this.player.on(AudioPlayerStatus.Idle, () => {
@@ -32,7 +34,11 @@ class VoiceService {
     });
   }
 
-  public join(channel: VoiceBasedChannel) {
+  public join(channel: VoiceBasedChannel, textChannelId?: string) {
+    if (textChannelId) {
+      this.lastTextChannelId = textChannelId;
+    }
+
     this.connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
@@ -50,11 +56,27 @@ class VoiceService {
   }
 
   public leave() {
+    this.clearLeaveTimeout();
     if (this.connection) {
       this.connection.destroy();
       this.connection = null;
       this.queue = [];
       this.player.stop();
+    }
+  }
+
+  public getLastTextChannelId(): string | null {
+    return this.lastTextChannelId;
+  }
+
+  public setLeaveTimeout(timeout: NodeJS.Timeout) {
+    this.leaveTimeout = timeout;
+  }
+
+  public clearLeaveTimeout() {
+    if (this.leaveTimeout) {
+      clearTimeout(this.leaveTimeout);
+      this.leaveTimeout = null;
     }
   }
 
