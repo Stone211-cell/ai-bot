@@ -31,21 +31,14 @@ export const voiceStateUpdateEvent: BotEvent = {
         const humanMembers = botVoiceChannel.members.filter((m) => !m.user.bot).size;
 
         if (humanMembers === 0) {
-          // Bot is alone, start 60s timeout
-          eventLogger.info("Bot is alone in VC, starting 60s leave timeout");
+          // Bot is alone, start 5 mins timeout
+          eventLogger.info("Bot is alone in VC, starting 5 mins leave timeout");
           
           voiceService.clearLeaveTimeout(); // Clear any existing timeout
           
           const timeout = setTimeout(async () => {
-            const textChannelId = voiceService.getLastTextChannelId();
-            if (textChannelId) {
-              const textChannel = oldState.guild.channels.cache.get(textChannelId) as TextChannel;
-              if (textChannel && textChannel.isTextBased()) {
-                await textChannel.send("ทิ้งกูไว้คนเดียว กูไปละ! 🙄");
-              }
-            }
             voiceService.leave();
-          }, 60000); // 60 seconds
+          }, 300000); // 5 minutes = 300000 ms
 
           voiceService.setLeaveTimeout(timeout);
         } else {
