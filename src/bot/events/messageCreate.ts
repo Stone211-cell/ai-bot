@@ -60,7 +60,10 @@ export const messageCreateEvent: BotEvent = {
 
     const botCalledByName = /ไมเคิล|michael|มค|บอท/.test(message.content.toLowerCase());
 
-    const botWasCalled = isMentioned || isReplyToBot || botCalledByName;
+    // ถ้ามีรูปใน channel นี้ → ให้บอทอ่านเสมอ (คนส่งรูปมาไม่จำเป็นต้องพิมพ์ข้อความด้วย)
+    const hasImageAttachment = message.attachments.some((a) => a.contentType?.startsWith("image/"));
+
+    const botWasCalled = isMentioned || isReplyToBot || botCalledByName || hasImageAttachment;
 
     // ── ถ้าไม่ได้เรียกบอท → บันทึก context แล้วออก ─────────────────────────
     if (!botWasCalled) {
@@ -120,7 +123,7 @@ export const messageCreateEvent: BotEvent = {
       avatarUrl: message.author.displayAvatarURL() ?? null,
       channelId: message.channelId,
       guildId: message.guildId,
-      content: cleanContent || message.content.trim(), // fallback ถ้า clean แล้วว่าง
+      content: cleanContent || (hasImageAttachment ? "ดูรูปนี้หน่อย" : message.content.trim()),
       imageParts: imageParts.length > 0 ? imageParts : undefined,
     };
 

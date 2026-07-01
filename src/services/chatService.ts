@@ -149,6 +149,7 @@ export class ChatService implements IChatService {
     const completion = await geminiService.chat({
       messages,
       contextUsername: ctx.username,
+      guildId: ctx.guildId,  // ส่งไปให้ AI tools ใช้ (เช่น kick_member)
     });
 
     // ── 5. Update affinity ───────────────────────────────────────────────────
