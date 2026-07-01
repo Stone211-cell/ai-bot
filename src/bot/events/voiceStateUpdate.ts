@@ -79,7 +79,7 @@ export const voiceStateUpdateEvent: BotEvent = {
           const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งสุ่มกระโดดเข้ามาในห้องเสียง Discord โดยไม่ถูกเชิญ
 คำสั่ง: แต่งประโยคทักทายกวนๆ สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น เช่น "มึงกินข้าวยัง", "เบื่อเลยมาหา", "โลนลีเลยโผล่มา" ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
 
-          const messages = buildMessages(prompt, "ทักทายหน่อย");
+          const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
 
           const completion = await geminiService.chat({
             messages,
