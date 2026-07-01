@@ -20,7 +20,6 @@ class VoiceService {
   private isPlaying = false;
   private queue: string[] = [];
   private mode: "read" | "talk" = "talk";
-  private mood: string = "ปกติ";
   private lastTextChannelId: string | null = null;
   private leaveTimeout: NodeJS.Timeout | null = null;
 
@@ -42,14 +41,13 @@ class VoiceService {
       this.lastTextChannelId = textChannelId;
     }
 
-    const moods = ["ปกติ", "ขี้เกียจ", "หงุดหงิด", "ง่วงนอน", "ร่าเริงสุดๆ", "กวนตีน", "เบื่อโลก"];
-    this.mood = moods[Math.floor(Math.random() * moods.length)];
-    voiceLogger.info(`Bot joined with mood: ${this.mood}`);
+    const currentMood = this.getMood();
+    voiceLogger.info(`Bot joined with organic mood: ${currentMood}`);
 
-    // Randomize mic/deaf based on mood (feels more human)
-    const isLazyOrSleepy = this.mood === "ขี้เกียจ" || this.mood === "ง่วงนอน" || this.mood === "เบื่อโลก";
-    const selfMute = isLazyOrSleepy ? Math.random() > 0.4 : false; // 60% chance to mute if lazy
-    const selfDeaf = this.mood === "ง่วงนอน" ? Math.random() > 0.7 : false; // 30% chance to deafen if sleepy
+    // Set mic/deaf behavior based on the organic mood
+    const isLazyOrSleepy = currentMood.includes("ง่วง") || currentMood.includes("ขี้เกียจ");
+    const selfMute = isLazyOrSleepy ? Math.random() > 0.7 : false; // 30% chance to mute if sleepy/lazy
+    const selfDeaf = currentMood.includes("ง่วง") ? Math.random() > 0.8 : false; // 20% chance to deafen if sleepy
 
     this.connection = joinVoiceChannel({
       channelId: channel.id,
@@ -103,7 +101,29 @@ class VoiceService {
   }
 
   public getMood(): string {
-    return this.mood;
+    const hour = new Date().getHours();
+    
+    // Core personality
+    let baseMood = "กวนตีน มั่นใจแบบโทนี่สตาร์ค";
+
+    // Organic time-based influence
+    if (hour >= 2 && hour < 6) return baseMood + " แต่ง่วงนอนมากๆ รำคาญคน";
+    if (hour >= 6 && hour < 10) return baseMood + " แต่เพิ่งตื่น ขี้เกียจๆ";
+    if (hour >= 22) return baseMood + " แต่อารมณ์ดึกๆ ชิลๆ ปนง่วง";
+
+    // Random daily variation (consistent throughout the day based on date)
+    const today = new Date().toDateString();
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+      hash = today.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const moodIndex = Math.abs(hash) % 100;
+
+    if (moodIndex < 15) return baseMood + " แต่วันนี้หงุดหงิด เบื่อโลก";
+    if (moodIndex < 30) return baseMood + " แต่วันนี้ร่าเริง พลังเยอะ";
+    if (moodIndex < 45) return baseMood + " แต่วันนี้ขี้เกียจ ไม่อยากคุยยาว";
+    
+    return baseMood;
   }
 
   public speak(text: string) {
