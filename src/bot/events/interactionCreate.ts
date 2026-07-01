@@ -46,22 +46,30 @@ export const interactionCreateEvent: BotEvent = {
         }
         voiceService.setMode("talk");
         voiceService.join(voiceChannel, interaction.channelId);
-        await interaction.reply({ content: "🤫 แอบเข้าห้องแล้ว", ephemeral: true });
+        
+        const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
+        const replyText = isCreator ? "มาแล้วครับบอส พร้อมลุย! 😎" : "เข้ามาแล้วเว้ย ว่ามาเลย";
+        await interaction.reply({ content: replyText, ephemeral: true });
       } 
       
       else if (commandName === "readmom") {
         if (!voiceChannel) {
-          await interaction.reply({ content: "❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!", ephemeral: true });
+          await interaction.reply({ content: "คุณต้องอยู่ในห้องเสียงก่อนนะ", ephemeral: true });
           return;
         }
         voiceService.setMode("read");
         voiceService.join(voiceChannel, interaction.channelId);
-        await interaction.reply({ content: "🎙️ โหมดอ่านข้อความทำงานแล้ว", ephemeral: true });
+        
+        const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
+        const replyText = isCreator ? "พร้อมอ่านข้อความครับบอส" : "เข้ามาละ พิมพ์มาเดี๋ยวอ่านให้";
+        await interaction.reply({ content: replyText, ephemeral: true });
       } 
       
       else if (commandName === "leavemom") {
         voiceService.leave();
-        await interaction.reply({ content: "👋 ออกจากห้องแล้ว", ephemeral: true });
+        const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
+        const replyText = isCreator ? "รับทราบครับบอส ผมไปละ 🫡" : "ไปละ บาย";
+        await interaction.reply({ content: replyText, ephemeral: true });
       }
     } catch (error) {
       eventLogger.error("Failed to execute slash command", { error });
