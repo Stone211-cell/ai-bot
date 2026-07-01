@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  discordId     String        @unique @map("discord_id")
+  username      String
+  discriminator String        @default("0")
+  avatarUrl            String?       @map("avatar_url")
+  isBot                Boolean       @default(false) @map("is_bot")
+  summary              String?       @db.Text
+  msgCountSinceSummary Int           @default(0) @map("msg_count_since_summary")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  chatMessages  ChatMessage[]
+
+  @@map("users")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  channelId String   @map("channel_id")
+  guildId   String?  @map("guild_id")
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+  tokens    Int?
+  model     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([channelId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model GlobalKnowledge {
+  id        String   @id @default(cuid())
+  topic     String
+  fact      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("global_knowledge")
+}
