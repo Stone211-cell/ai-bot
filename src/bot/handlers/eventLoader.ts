@@ -5,15 +5,16 @@ import { logger } from "../../utils/logger.js";
 // ── Import all events ─────────────────────────────────────────────────────────
 import { readyEvent } from "../events/ready.js";
 import { messageCreateEvent } from "../events/messageCreate.js";
+import { interactionCreateEvent } from "../events/interactionCreate.js";
 
 const handlerLogger = logger.child("EventLoader");
-
-const events: BotEvent[] = [readyEvent, messageCreateEvent];
 
 /**
  * Registers all event handlers on the Discord client.
  */
 export function loadEvents(client: Client): void {
+  const events = [readyEvent, messageCreateEvent, interactionCreateEvent];
+
   for (const event of events) {
     if (event.once) {
       client.once(event.name, (...args) => {

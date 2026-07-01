@@ -49,37 +49,6 @@ export const messageCreateEvent: BotEvent = {
     // Ignore empty messages
     if (!message.content.trim()) return;
 
-    // ── Voice Commands ─────────────────────────────────────────────────────────
-    if (message.content.trim() === "/readmom") {
-      const voiceChannel = message.member?.voice.channel;
-      if (!voiceChannel) {
-        await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
-        return;
-      }
-      voiceService.setMode("read");
-      voiceService.join(voiceChannel);
-      await message.reply("🎙️ โหมดอ่านข้อความ: พิมพ์อะไรมาฉันก็จะอ่านตามนั้นเป๊ะๆ (ไม่มี AI ตอบโต้)");
-      return;
-    }
-
-    if (message.content.trim() === "/talkmom" || message.content.trim() === "/joinmom") {
-      const voiceChannel = message.member?.voice.channel;
-      if (!voiceChannel) {
-        await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
-        return;
-      }
-      voiceService.setMode("talk");
-      voiceService.join(voiceChannel);
-      await message.reply("🤖 โหมด AI พูดคุย: ฉันจะคิดคำตอบและพูดคุยกับทุกคนอย่างเป็นธรรมชาติ!");
-      return;
-    }
-
-    if (message.content.trim() === "/leavemom") {
-      voiceService.leave();
-      await message.reply("👋 ไปละ บาย");
-      return;
-    }
-
     // ── Dictation Mode Hook ──────────────────────────────────────────────────
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {
       // Clean content for reading (remove emojis and URLs)
