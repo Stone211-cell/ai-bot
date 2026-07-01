@@ -52,7 +52,7 @@ export class MessageHandler {
     }
 
     if (result.reply.length <= DISCORD_MAX_LENGTH) {
-      await message.reply(result.reply);
+      await sendable.send(result.reply);
     } else {
       for (const chunk of this.chunkMessage(result.reply, DISCORD_MAX_LENGTH)) {
         await sendable.send(chunk);
