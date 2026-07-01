@@ -60,11 +60,29 @@ export const interactionCreateEvent: BotEvent = {
         }
         await interaction.deferReply({ ephemeral: true });
 
-        voiceService.setMode("read");
+        voiceService.setMode("talk");
         await voiceService.join(voiceChannel, interaction.channelId);
 
         await interaction.deleteReply();
-        voiceService.speak("โหมดอ่านข้อความทำงานแล้ว พิมพ์อะไรมาเดี๋ยวอ่านให้ฟัง");
+        
+        // ให้ AI สุ่มประโยคทักทายตอนถูกเชิญเข้าห้อง
+        try {
+          const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งถูกผู้ใช้ชื่อ ${interaction.user.username} เชิญเข้ามาในห้องเสียง
+คำสั่ง: แต่งประโยคทักทายกวนๆ หรือชวนคุย สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
+          
+          const geminiService = (await import("../../services/geminiService.js")).geminiService;
+          const { buildMessages } = await import("../../ai/prompt/promptBuilder.js");
+          const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
+          
+          const completion = await geminiService.chat({
+            messages,
+            contextUsername: "System"
+          });
+          
+          voiceService.speak(completion.content);
+        } catch (err) {
+          voiceService.speak("มาแล้ววัยรุ่น มีไรให้รับใช้");
+        }
       } 
       
       else if (commandName === "leavemom") {

@@ -112,7 +112,7 @@ export const messageCreateEvent: BotEvent = {
       let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
       textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
       if (textToRead) {
-        voiceService.speak(`${message.author.username} บอกว่า, ${textToRead}`);
+        voiceService.speak(textToRead);
       }
       return;
     }
