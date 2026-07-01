@@ -7,7 +7,9 @@ import {
   VoiceConnection,
 } from "@discordjs/voice";
 import type { VoiceBasedChannel } from "discord.js";
-import * as googleTTS from "google-tts-api";
+import { EdgeTTS } from "node-edge-tts";
+import * as fs from "fs";
+import * as path from "path";
 import { logger } from "../utils/logger.js";
 
 const voiceLogger = logger.child("VoiceService");
@@ -132,14 +134,28 @@ class VoiceService {
     this.isPlaying = true;
 
     try {
-      // Get audio URL from google-tts-api
-      const url = googleTTS.getAudioUrl(text, {
-        lang: "th",
-        slow: false,
-        host: "https://translate.google.com",
+      // Create Edge TTS instance (using a male Thai voice by default: th-TH-NiwatNeural)
+      const tts = new EdgeTTS({
+        voice: "th-TH-NiwatNeural",
+        lang: "th-TH",
+        outputFormat: "audio-24khz-48kbitrate-mono-mp3",
       });
 
-      const resource = createAudioResource(url);
+      // We need to save the stream to a temporary file or buffer to play it
+      // Let's create a temporary file path
+      const tempFilePath = path.join(process.cwd(), `temp-tts-${Date.now()}.mp3`);
+      
+      await tts.ttsPromise(text, tempFilePath);
+
+      const resource = createAudioResource(tempFilePath);
+      
+      // Cleanup file when playback ends
+      this.player.once(AudioPlayerStatus.Idle, () => {
+        fs.unlink(tempFilePath, (err) => {
+          if (err) voiceLogger.error("Failed to delete temp TTS file", { err });
+        });
+      });
+
       this.player.play(resource);
     } catch (error) {
       voiceLogger.error("TTS playback failed", { error });
