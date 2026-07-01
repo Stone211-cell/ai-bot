@@ -74,8 +74,10 @@ export const interactionCreateEvent: BotEvent = {
       }
     } catch (error) {
       eventLogger.error("Failed to execute slash command", { error });
-      if (!interaction.replied) {
-        await interaction.reply({ content: "❌ เกิดข้อผิดพลาดขณะรันคำสั่ง!", ephemeral: true });
+      if (interaction.deferred) {
+        await interaction.editReply({ content: "❌ เซิร์ฟเวอร์ไม่สามารถเชื่อมต่อห้องเสียงได้ (UDP Blocked/Timeout) โปรดลองใหม่" }).catch(() => {});
+      } else if (!interaction.replied) {
+        await interaction.reply({ content: "❌ เกิดข้อผิดพลาดขณะรันคำสั่ง!", ephemeral: true }).catch(() => {});
       }
     }
   },

@@ -143,7 +143,7 @@ export class ChatService implements IChatService {
     });
 
     // content ที่ส่งถึง AI คือข้อความของ current sender (ไม่ต้องใส่ prefix เพราะ AI รู้อยู่แล้วจาก systemPrompt)
-    const messages = buildMessages(systemPrompt, ctx.content, historyMessages, ctx.imageParts);
+    const messages = buildMessages(systemPrompt, historyMessages, ctx.content, ctx.username, ctx.imageParts);
 
     // ── 4. Call Gemini ────────────────────────────────────────────────────────
     const completion = await geminiService.chat({

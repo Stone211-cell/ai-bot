@@ -113,20 +113,31 @@ export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
  */
 export function buildMessages(
   systemPrompt: string,
-  userContent: string,
-  historyMessages: ChatMessage[] = [],
-  imageParts?: { data: string; mimeType: string }[],
-): ChatMessage[] {
-  return [
-    {
-      role: "system",
-      content: systemPrompt,
-    },
-    ...historyMessages,
-    {
-      role: "user",
-      content: userContent,
-      imageParts,
-    },
+  history: ChatMessage[],
+  currentMessage: string,
+  currentUsername: string,
+  images?: { data: string; mimeType: string }[]
+): any[] {
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history,
   ];
+
+  // เติมชื่อผู้ส่งในข้อความปัจจุบัน เพื่อไม่ให้ AI สับสน
+  const formattedCurrentMessage = `[${currentUsername}]: ${currentMessage}`;
+
+  if (images && images.length > 0) {
+    messages.push({
+      role: "user",
+      content: formattedCurrentMessage,
+      imageParts: images,
+    });
+  } else {
+    messages.push({
+      role: "user",
+      content: formattedCurrentMessage,
+    });
+  }
+
+  return messages;
 }
