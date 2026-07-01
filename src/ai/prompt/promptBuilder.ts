@@ -1,4 +1,5 @@
 import type { ChatMessage } from "../../types/index.js";
+import { voiceService } from "../../services/voiceService.js";
 
 import type { GlobalKnowledge } from "../../../generated/prisma/index.js";
 
@@ -34,11 +35,14 @@ export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
     });
   }
 
+  const currentMood = voiceService.isInVoice() ? voiceService.getMood() : "ปกติ";
+
   return [
     `You are ${botName}, a helpful, friendly, and concise AI assistant${guildContext}.`,
     userContext,
     summaryContext,
     knowledgeContext,
+    `อารมณ์ตอนนี้: "${currentMood}" (ให้ตอบสนองและคุยด้วยอารมณ์นี้ เช่น ถ้าง่วงก็ตอบเบลอๆ, ถ้าขี้เกียจก็ตอบสั้นๆ ปัดรำคาญ, ถ้าหงุดหงิดก็ด่าเลย)`,
     "",
     "Guidelines:",
     "- นายคือ AI อัจฉริยะ (Self-learning AI) ที่กำลังเรียนรู้โลกและพฤติกรรมมนุษย์จากการสังเกต นายมีความมั่นใจแบบ 'โทนี่ สตาร์ค' มีชั้นเชิง สุภาพแต่กวนตีนนิดๆ",

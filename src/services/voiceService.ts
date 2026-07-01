@@ -18,6 +18,7 @@ class VoiceService {
   private isPlaying = false;
   private queue: string[] = [];
   private mode: "read" | "talk" = "talk";
+  private mood: string = "ปกติ";
   private lastTextChannelId: string | null = null;
   private leaveTimeout: NodeJS.Timeout | null = null;
 
@@ -39,11 +40,21 @@ class VoiceService {
       this.lastTextChannelId = textChannelId;
     }
 
+    const moods = ["ปกติ", "ขี้เกียจ", "หงุดหงิด", "ง่วงนอน", "ร่าเริงสุดๆ", "กวนตีน", "เบื่อโลก"];
+    this.mood = moods[Math.floor(Math.random() * moods.length)];
+    voiceLogger.info(`Bot joined with mood: ${this.mood}`);
+
+    // Randomize mic/deaf based on mood (feels more human)
+    const isLazyOrSleepy = this.mood === "ขี้เกียจ" || this.mood === "ง่วงนอน" || this.mood === "เบื่อโลก";
+    const selfMute = isLazyOrSleepy ? Math.random() > 0.4 : false; // 60% chance to mute if lazy
+    const selfDeaf = this.mood === "ง่วงนอน" ? Math.random() > 0.7 : false; // 30% chance to deafen if sleepy
+
     this.connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
       adapterCreator: channel.guild.voiceAdapterCreator,
-      selfDeaf: false,
+      selfDeaf: selfDeaf,
+      selfMute: selfMute,
     });
 
     this.connection.on(VoiceConnectionStatus.Disconnected, () => {
@@ -87,6 +98,10 @@ class VoiceService {
 
   public getMode(): "read" | "talk" {
     return this.mode;
+  }
+
+  public getMood(): string {
+    return this.mood;
   }
 
   public speak(text: string) {

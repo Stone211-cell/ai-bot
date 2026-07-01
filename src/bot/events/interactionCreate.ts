@@ -44,12 +44,22 @@ export const interactionCreateEvent: BotEvent = {
           await interaction.reply({ content: "❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!", ephemeral: true });
           return;
         }
+        await interaction.deferReply({ ephemeral: true });
+        
         voiceService.setMode("talk");
         voiceService.join(voiceChannel, interaction.channelId);
         
+        await interaction.deleteReply();
+        
+        // ให้ AI สร้างคำทักทายตอนเข้าห้องผ่านระบบเสียงแทน (ถ้าเปิดไมค์)
         const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
-        const replyText = isCreator ? "มาแล้วครับบอส พร้อมลุย! 😎" : "เข้ามาแล้วเว้ย ว่ามาเลย";
-        await interaction.reply({ content: replyText, ephemeral: true });
+        if (isCreator) {
+          voiceService.speak("สวัสดีครับท่านบอส ผมมารายงานตัวแล้วครับ");
+        } else {
+          // สุ่มพูดทักทาย
+          const greetings = ["หวัดดีทุกคน", "เข้ามาละ", "มีใครอยู่ป่าว", "มาแล้วๆ ว่าไง"];
+          voiceService.speak(greetings[Math.floor(Math.random() * greetings.length)]);
+        }
       } 
       
       else if (commandName === "readmom") {
@@ -57,19 +67,19 @@ export const interactionCreateEvent: BotEvent = {
           await interaction.reply({ content: "คุณต้องอยู่ในห้องเสียงก่อนนะ", ephemeral: true });
           return;
         }
+        await interaction.deferReply({ ephemeral: true });
+        
         voiceService.setMode("read");
         voiceService.join(voiceChannel, interaction.channelId);
         
-        const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
-        const replyText = isCreator ? "พร้อมอ่านข้อความครับบอส" : "เข้ามาละ พิมพ์มาเดี๋ยวอ่านให้";
-        await interaction.reply({ content: replyText, ephemeral: true });
+        await interaction.deleteReply();
+        voiceService.speak("โหมดอ่านข้อความทำงานแล้ว พิมพ์อะไรมาเดี๋ยวอ่านให้ฟัง");
       } 
       
       else if (commandName === "leavemom") {
+        await interaction.deferReply({ ephemeral: true });
         voiceService.leave();
-        const isCreator = interaction.user.username.toLowerCase() === "bibi.ubu";
-        const replyText = isCreator ? "รับทราบครับบอส ผมไปละ 🫡" : "ไปละ บาย";
-        await interaction.reply({ content: replyText, ephemeral: true });
+        await interaction.deleteReply();
       }
     } catch (error) {
       eventLogger.error("Failed to execute slash command", { error });
