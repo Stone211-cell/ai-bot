@@ -62,12 +62,23 @@ class VoiceService {
       selfMute: false,
     });
 
+    // ดักจับสถานะเครือข่ายของห้องเสียง (ช่วยแก้ปัญหาเข้าแล้วเด้งออก)
+    this.connection.on("stateChange", (oldState, newState) => {
+      const oldNetworking = Reflect.get(oldState, "networking");
+      const newNetworking = Reflect.get(newState, "networking");
+
+      const networkStateChange = (oldNetworking && newNetworking) ? 
+        `Network: ${Reflect.get(oldNetworking, "state")?.code} -> ${Reflect.get(newNetworking, "state")?.code}` : "";
+      
+      voiceLogger.debug(`Voice status changed from ${oldState.status} to ${newState.status} ${networkStateChange}`);
+    });
+
     // รอให้ connection พร้อมก่อน subscribe player
     try {
-      await entersState(this.connection, VoiceConnectionStatus.Ready, 10_000);
+      await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
       voiceLogger.info("Voice connection is Ready");
     } catch (err) {
-      voiceLogger.error("Voice connection failed to become Ready", { err });
+      voiceLogger.error("Voice connection failed to become Ready (UDP Timeout)", { err });
       this.connection.destroy();
       this.connection = null;
       return;
