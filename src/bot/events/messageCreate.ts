@@ -146,26 +146,7 @@ export const messageCreateEvent: BotEvent = {
     // ถ้ามีรูป → ให้บอทอ่านเสมอ
     const hasImageAttachment = message.attachments.some((a) => a.contentType?.startsWith("image/"));
 
-    const botWasCalled = isMentioned || isReplyToBot || botCalledByName || hasImageAttachment;
-
-    // ── ไม่ได้เรียกบอท → บันทึก context แล้วออก ─────────────────────────
-    if (!botWasCalled) {
-      const ctx: DiscordMessageContext = {
-        discordId: message.author.id,
-        username: displayName,
-        discriminator: message.author.discriminator ?? "0",
-        avatarUrl: message.author.displayAvatarURL() ?? null,
-        channelId: message.channelId,
-        guildId: message.guildId,
-        content: message.content.trim(),
-      };
-
-      chatService.recordMessage(ctx).catch((err) => {
-        eventLogger.debug("Failed to record passive message", { error: err });
-      });
-      return;
-    }
-
+    const botWasCalled = true; // บังคับให้เป็น true เพื่อให้บอทประมวลผลทุกข้อความตามที่ user ต้องการ
     // ── บอทถูกเรียก → ส่งไป AI ───────────────────────────────────────────
     eventLogger.debug("Bot was called", {
       authorId: message.author.id,
