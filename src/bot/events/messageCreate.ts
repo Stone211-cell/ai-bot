@@ -50,7 +50,7 @@ export const messageCreateEvent: BotEvent = {
     if (!message.content.trim()) return;
 
     // ── Voice Commands ─────────────────────────────────────────────────────────
-    if (message.content.trim() === "/readmom" || message.content.trim() === "/joinmom") {
+    if (message.content.trim() === "/readmom") {
       const voiceChannel = message.member?.voice.channel;
       if (!voiceChannel) {
         await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
@@ -62,7 +62,7 @@ export const messageCreateEvent: BotEvent = {
       return;
     }
 
-    if (message.content.trim() === "/talkmom") {
+    if (message.content.trim() === "/talkmom" || message.content.trim() === "/joinmom") {
       const voiceChannel = message.member?.voice.channel;
       if (!voiceChannel) {
         await message.reply("❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!");
@@ -78,17 +78,6 @@ export const messageCreateEvent: BotEvent = {
       voiceService.leave();
       await message.reply("👋 ไปละ บาย");
       return;
-    }
-
-    // ── Anti-Spam (5s Cooldown) ──────────────────────────────────────────────
-    if (message.author.username !== "bibi.ubu") {
-      const now = Date.now();
-      const lastMessageTime = userCooldowns.get(message.author.id) || 0;
-      if (now - lastMessageTime < 5000) {
-        // Ignore the message if sent within 5 seconds of the last one
-        return;
-      }
-      userCooldowns.set(message.author.id, now);
     }
 
     // ── Dictation Mode Hook ──────────────────────────────────────────────────
