@@ -61,7 +61,6 @@ export class GeminiService implements IGeminiService {
     });
 
     const tools: any[] = [
-      { googleSearch: {} },
       { functionDeclarations }
     ];
 
