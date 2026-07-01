@@ -158,12 +158,12 @@ class VoiceService {
       const tts = new EdgeTTS({
         voice: "th-TH-NiwatNeural",
         lang: "th-TH",
-        outputFormat: "audio-24khz-48kbitrate-mono-mp3",
+        outputFormat: "webm-24khz-16bit-mono-opus",
       });
 
       // We need to save the stream to a temporary file or buffer to play it
       // Let's create a temporary file path
-      const tempFilePath = path.join(process.cwd(), `temp-tts-${Date.now()}.mp3`);
+      const tempFilePath = path.join(process.cwd(), `temp-tts-${Date.now()}.webm`);
       
       await tts.ttsPromise(text, tempFilePath);
 
