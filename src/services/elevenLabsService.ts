@@ -29,7 +29,7 @@ export class ElevenLabsService {
       elevenLogger.debug(`Requesting ElevenLabs TTS for: "${text.substring(0, 50)}"`);
       
       const response = await axios.post(
-        `https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}?optimize_streaming_latency=3`,
         {
           text: text,
           model_id: "eleven_multilingual_v2", // V2 รองรับภาษาไทยได้สมจริงที่สุด
