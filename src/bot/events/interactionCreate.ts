@@ -16,7 +16,13 @@ export const interactionCreateEvent: BotEvent = {
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName } = interaction;
-    const member = interaction.member as GuildMember;
+    const guild = interaction.guild;
+    
+    let member = guild?.members.cache.get(interaction.user.id);
+    if (!member && guild) {
+      member = await guild.members.fetch(interaction.user.id).catch(() => undefined);
+    }
+    
     const voiceChannel = member?.voice?.channel;
 
     try {
