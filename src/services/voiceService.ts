@@ -43,6 +43,7 @@ class VoiceService {
       channelId: channel.id,
       guildId: channel.guild.id,
       adapterCreator: channel.guild.voiceAdapterCreator,
+      selfDeaf: false,
     });
 
     this.connection.on(VoiceConnectionStatus.Disconnected, () => {

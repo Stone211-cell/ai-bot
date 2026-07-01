@@ -1,6 +1,7 @@
 import type { Message, TextBasedChannel } from "discord.js";
 import { ChannelType } from "discord.js";
 import { chatService } from "../../services/chatService.js";
+import { config } from "../../config/index.js";
 import type { DiscordMessageContext } from "../../types/index.js";
 import { logger } from "../../utils/logger.js";
 import { voiceService } from "../../services/voiceService.js";
@@ -81,7 +82,7 @@ export class MessageHandler {
       return;
     }
 
-    if (voiceService.isInVoice()) {
+    if (voiceService.isInVoice() && voiceService.getMode() === "talk") {
       voiceService.speak(result.reply);
     }
 

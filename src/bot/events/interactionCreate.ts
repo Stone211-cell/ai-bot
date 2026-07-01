@@ -46,7 +46,7 @@ export const interactionCreateEvent: BotEvent = {
         }
         voiceService.setMode("talk");
         voiceService.join(voiceChannel, interaction.channelId);
-        await interaction.reply("🤖 โหมด AI พูดคุย: ฉันจะคิดคำตอบและพูดคุยกับทุกคนอย่างเป็นธรรมชาติ!");
+        await interaction.reply({ content: "🤫 แอบเข้าห้องแล้ว", ephemeral: true });
       } 
       
       else if (commandName === "readmom") {
@@ -56,12 +56,12 @@ export const interactionCreateEvent: BotEvent = {
         }
         voiceService.setMode("read");
         voiceService.join(voiceChannel, interaction.channelId);
-        await interaction.reply("🎙️ โหมดอ่านข้อความ: พิมพ์อะไรมาฉันก็จะอ่านตามนั้นเป๊ะๆ (ไม่มี AI ตอบโต้)");
+        await interaction.reply({ content: "🎙️ โหมดอ่านข้อความทำงานแล้ว", ephemeral: true });
       } 
       
       else if (commandName === "leavemom") {
         voiceService.leave();
-        await interaction.reply("👋 ไปละ บาย");
+        await interaction.reply({ content: "👋 ออกจากห้องแล้ว", ephemeral: true });
       }
     } catch (error) {
       eventLogger.error("Failed to execute slash command", { error });
