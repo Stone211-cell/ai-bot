@@ -12,7 +12,10 @@ import type { VoiceBasedChannel } from "discord.js";
 import { EdgeTTS } from "node-edge-tts";
 import * as fs from "fs";
 import * as path from "path";
+import prism from "prism-media";
 import { logger } from "../utils/logger.js";
+import { speechToTextService } from "./speechToTextService.js";
+import { chatService } from "./chatService.js";
 
 const voiceLogger = logger.child("VoiceService");
 
@@ -96,6 +99,8 @@ class VoiceService {
     this.connection.subscribe(this.player);
     voiceLogger.info(`Joined and subscribed to voice channel: ${channel.id}`);
 
+    this.setupAudioReceiver(channel);
+
     // Handle disconnect
     this.connection.on(VoiceConnectionStatus.Disconnected, async () => {
       voiceLogger.info("Disconnected from voice channel.");
@@ -111,6 +116,78 @@ class VoiceService {
         this.queue = [];
         this.isPlaying = false;
       }
+    });
+  }
+
+  private setupAudioReceiver(channel: VoiceBasedChannel) {
+    if (!this.connection) return;
+
+    const receiver = this.connection.receiver;
+
+    receiver.speaking.on("start", (userId) => {
+      // ถ้าระบบไม่ได้อยู่ในโหมด AI หรือไม่ได้คุยอยู่ ไม่ต้องฟัง
+      if (this.mode !== "talk") return;
+      if (userId === channel.client.user?.id) return; // ไม่ฟังตัวเอง
+
+      voiceLogger.debug(`Started listening to user: ${userId}`);
+
+      const opusStream = receiver.subscribe(userId, {
+        end: {
+          behavior: EndBehaviorType.AfterSilence,
+          duration: 1500, // รอเงียบ 1.5 วินาทีถึงตัดจบไฟล์
+        },
+      });
+
+      const oggStream = new prism.opus.OggLogicalBitstream({
+        opusHead: new prism.opus.OpusHead({
+          channelCount: 2,
+          sampleRate: 48000,
+        }),
+        pageSizeControl: { maxPackets: 10 },
+      });
+
+      const tempAudioPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.ogg`);
+      const writeStream = fs.createWriteStream(tempAudioPath);
+
+      opusStream.pipe(oggStream).pipe(writeStream);
+
+      writeStream.on("finish", async () => {
+        voiceLogger.debug(`Finished receiving audio from ${userId}, sending to STT...`);
+        try {
+          // 1. แปลงเสียงเป็นข้อความ
+          const text = await speechToTextService.transcribe(tempAudioPath);
+          fs.unlink(tempAudioPath, () => {}); // ลบไฟล์ทิ้งหลังส่งเสร็จ
+
+          if (!text || text.length < 2) return; // ถ้าไม่มีข้อความ หรือสั้นเกินไปข้าม
+
+          voiceLogger.info(`User ${userId} said: "${text}"`);
+
+          // 2. ดึงชื่อผู้ใช้
+          const user = await channel.client.users.fetch(userId).catch(() => null);
+          const username = user?.username || "VoiceUser";
+
+          // 3. ส่งข้อความให้ AI คิดคำตอบ
+          const result = await chatService.processMessage({
+            discordId: userId,
+            username: username,
+            channelId: this.lastTextChannelId || channel.id,
+            text: text,
+            isMentioned: true, // ฟังเสียง ถือว่าเรียกบอทเสมอ
+            isReplyToBot: false,
+            botCalledByName: true,
+            hasImageAttachment: false,
+            imageParts: [],
+          });
+
+          // 4. ให้บอทพูดคำตอบออกทางเสียง
+          if (!result.reply.includes("[IGNORE]")) {
+            this.speak(result.reply);
+          }
+        } catch (error: any) {
+          voiceLogger.error("Error processing voice input", { error: error.message });
+          fs.unlink(tempAudioPath, () => {});
+        }
+      });
     });
   }
 
@@ -235,13 +312,8 @@ class VoiceService {
     try {
       voiceLogger.debug(`TTS generating for: "${text.substring(0, 50)}"`);
 
-      const tts = new EdgeTTS({
-        voice: "th-TH-NiwatNeural",
-        lang: "th-TH",
-        outputFormat: "webm-24khz-16bit-mono-opus",
-      });
-
-      await tts.ttsPromise(text, tempFilePath);
+      const { elevenLabsService } = await import("./elevenLabsService.js");
+      const resource = await elevenLabsService.generateAudio(text, tempFilePath);
 
       // ตรวจว่าไฟล์ถูกสร้างและมีข้อมูล
       const stat = fs.statSync(tempFilePath);
@@ -251,9 +323,7 @@ class VoiceService {
 
       voiceLogger.debug(`TTS file created: ${stat.size} bytes`);
 
-      // ให้ Discord ใช้ FFmpeg แปลงเป็น Opus อัตโนมัติ ปลอดภัยกว่าการ force type
-      const resource = createAudioResource(fs.createReadStream(tempFilePath));
-
+      // Resource ถูกสร้างจาก elevenLabsService แล้ว ไม่ต้องสร้างใหม่
       // Cleanup ไฟล์ชั่วคราวเมื่อเล่นจบ
       const cleanup = () => {
         fs.unlink(tempFilePath, (err) => {
