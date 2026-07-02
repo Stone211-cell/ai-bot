@@ -152,15 +152,30 @@ export class ChatService implements IChatService {
       guildId: ctx.guildId,  // ส่งไปให้ AI tools ใช้ (เช่น kick_member)
     });
 
+    let replyContent = completion.content;
+    let affinityDelta = 0;
+
+    // ค้นหาแท็ก [AFFINITY: +x] หรือ [AFFINITY: -x] หรือ [AFFINITY: x] ท้ายข้อความ
+    const affinityRegex = /\[AFFINITY:\s*([+-]?\d+)\]/i;
+    const match = replyContent.match(affinityRegex);
+    if (match && match[1]) {
+      affinityDelta = parseInt(match[1], 10);
+      // ลบแท็กนี้ออกจากข้อความคำตอบที่จะส่งให้ผู้ใช้และบันทึก
+      replyContent = replyContent.replace(affinityRegex, "").trim();
+    } else {
+      // fallback เป็นการสแกนคำแบบเก่าถ้า AI ลืมใส่
+      affinityDelta = inferAffinityDelta(ctx.content);
+    }
+
     // ── 5. Update affinity ───────────────────────────────────────────────────
     try {
-      const affinityDelta = inferAffinityDelta(ctx.content);
       if (affinityDelta !== 0) {
         await userRepository.updateAffinity(
           user.discordId,
           affinityDelta,
           inferRelationshipStatus((user.affinity ?? 0) + affinityDelta),
         );
+        svcLogger.debug(`Updated user affinity`, { username: ctx.username, delta: affinityDelta });
       }
     } catch (error) {
       handleError(error, "ChatService.updateAffinity");
@@ -185,7 +200,7 @@ export class ChatService implements IChatService {
         chatRepository.create({
           ...base,
           role: "assistant",
-          content: completion.content,
+          content: replyContent,
           tokens: completion.usage.completionTokens,
         }),
       ]);
@@ -212,7 +227,7 @@ export class ChatService implements IChatService {
     });
 
     return {
-      reply: completion.content,
+      reply: replyContent,
       tokensUsed: completion.usage.totalTokens,
       model: completion.model,
     };

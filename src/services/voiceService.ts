@@ -315,13 +315,16 @@ class VoiceService {
       const { elevenLabsService } = await import("./elevenLabsService.js");
       const resource = await elevenLabsService.generateAudio(text, tempFilePath);
 
-      // ตรวจว่าไฟล์ถูกสร้างและมีข้อมูล
-      const stat = fs.statSync(tempFilePath);
-      if (stat.size === 0) {
-        throw new Error("TTS output file is empty");
+      // ตรวจว่าไฟล์ถูกสร้างและมีข้อมูล (เฉพาะเมื่อมีการบันทึกไฟล์ลงดิสก์ เช่น EdgeTTS)
+      if (fs.existsSync(tempFilePath)) {
+        const stat = fs.statSync(tempFilePath);
+        if (stat.size === 0) {
+          throw new Error("TTS output file is empty");
+        }
+        voiceLogger.debug(`TTS file verified: ${stat.size} bytes`);
+      } else {
+        voiceLogger.debug("TTS resource streamed directly (no temp file)");
       }
-
-      voiceLogger.debug(`TTS file created: ${stat.size} bytes`);
 
       // Resource ถูกสร้างจาก elevenLabsService แล้ว ไม่ต้องสร้างใหม่
       // Cleanup ไฟล์ชั่วคราวเมื่อเล่นจบ

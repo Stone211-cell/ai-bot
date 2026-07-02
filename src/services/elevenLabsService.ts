@@ -3,7 +3,7 @@ import { logger } from "../utils/logger.js";
 import { EdgeTTS } from "node-edge-tts";
 import * as fs from "fs";
 import * as path from "path";
-import { createAudioResource, AudioResource } from "@discordjs/voice";
+import { createAudioResource, AudioResource, StreamType } from "@discordjs/voice";
 
 const elevenLogger = logger.child("ElevenLabs");
 
@@ -26,10 +26,10 @@ export class ElevenLabsService {
     }
 
     try {
-      elevenLogger.debug(`Requesting ElevenLabs TTS for: "${text.substring(0, 50)}"`);
+      elevenLogger.debug("Requesting ElevenLabs TTS for: \"" + text.substring(0, 50) + "\"");
       
       const response = await axios.post(
-        `https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}?optimize_streaming_latency=3`,
+        "https://api.elevenlabs.io/v1/text-to-speech/" + this.voiceId + "?optimize_streaming_latency=3",
         {
           text: text,
           model_id: "eleven_multilingual_v2", // V2 รองรับภาษาไทยได้สมจริงที่สุด
@@ -62,14 +62,14 @@ export class ElevenLabsService {
               body += chunk.toString();
             });
             error.response.data.on("end", () => {
-              resolve(body || `HTTP Status ${error.response.status}`);
+              resolve(body || "HTTP Status " + error.response.status);
             });
             error.response.data.on("error", (err: any) => {
-              resolve(`Stream Error: ${err.message}`);
+              resolve("Stream Error: " + err.message);
             });
           });
         } catch (e: any) {
-          errorDetail = `Failed to parse stream error: ${e.message}`;
+          errorDetail = "Failed to parse stream error: " + e.message;
         }
       }
 
@@ -88,7 +88,9 @@ export class ElevenLabsService {
     });
 
     await tts.ttsPromise(text, tempFilePath);
-    return createAudioResource(fs.createReadStream(tempFilePath));
+    return createAudioResource(fs.createReadStream(tempFilePath), {
+      inputType: StreamType.WebmOpus,
+    });
   }
 }
 
