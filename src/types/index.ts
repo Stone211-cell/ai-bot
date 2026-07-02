@@ -13,6 +13,7 @@ export interface DiscordMessageContext {
   guildId: string | null;
   content: string;
   imageParts?: { data: string; mimeType: string }[];
+  isVoice?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export interface ChatCompletionOptions {
   contextUsername?: string;
   contextDiscordId?: string; // รหัส Discord ID ของคนคุยปัจจุบัน
   guildId?: string | null; // ส่งไปให้ AI tools (เช่น kick_member) ใช้งาน
+  disableTools?: boolean; // ปิดการใช้เครื่องมือเพื่อให้ตอบกลับไวขึ้น (สำหรับ voice)
 }
 
 export interface ChatCompletionResult {

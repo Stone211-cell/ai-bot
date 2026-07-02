@@ -60,7 +60,7 @@ export class GeminiService implements IGeminiService {
       maxOutputTokens,
     });
 
-    const tools: any[] = [
+    const tools: any[] | undefined = options.disableTools ? undefined : [
       { functionDeclarations }
     ];
 

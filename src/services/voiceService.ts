@@ -249,6 +249,7 @@ class VoiceService {
               guildId: null,
               content: text,
               imageParts: [],
+              isVoice: true,
             });
 
             // 4. ให้บอทพูดคำตอบออกทางเสียง

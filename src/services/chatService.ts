@@ -101,9 +101,8 @@ export class ChatService implements IChatService {
     // ดึง history ระดับ channel ทั้งหมด เพื่อให้บอทเห็น conversation ของทุกคน
     const rawHistory = await chatRepository.findByChannelId(
       ctx.channelId,
-      config.gemini.maxHistory,
+      ctx.isVoice ? 3 : config.gemini.maxHistory, // ถ้าเสียง เอาประวัติแค่ 3 ข้อความให้ทำงานไวแสง
     );
-
 
     // Fetch all unique user IDs from history in one go to prevent sequential DB queries in the loop
     const uniqueUserIds = [...new Set(rawHistory.map((m) => m.userId))];
@@ -157,6 +156,7 @@ export class ChatService implements IChatService {
       contextUsername: ctx.username,
       contextDiscordId: ctx.discordId,
       guildId: ctx.guildId,  // ส่งไปให้ AI tools ใช้ (เช่น kick_member)
+      disableTools: ctx.isVoice, // ปิด tools เพื่อให้ตอบกลับไวขึ้น (1-on-1 mode)
     });
 
     let replyContent = completion.content;
