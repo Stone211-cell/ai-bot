@@ -18,7 +18,8 @@
 
     "types": ["node"],
 
-    "noEmit": true,
+    "outDir": "dist",
+    "rootDir": "src",
 
     "paths": {
       "@/*": ["./src/*"]

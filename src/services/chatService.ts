@@ -8,6 +8,7 @@ import { userRepository } from "../repositories/userRepository.js";
 import { knowledgeRepository } from "../repositories/knowledgeRepository.js";
 import { handleError } from "../utils/errorHandler.js";
 import { logger } from "../utils/logger.js";
+import { prisma } from "../database/prismaClient.js";
 
 const svcLogger = logger.child("ChatService");
 
@@ -103,9 +104,15 @@ export class ChatService implements IChatService {
       config.gemini.maxHistory,
     );
 
-    // Prisma returns desc (newest first) → reverse to asc (oldest first)
-    // โหลด username สำหรับแต่ละ userId (cache ไม่ query ซ้ำ)
-    const userCache = new Map<string, string>();
+
+    // Fetch all unique user IDs from history in one go to prevent sequential DB queries in the loop
+    const uniqueUserIds = [...new Set(rawHistory.map((m) => m.userId))];
+    const users = await prisma.user.findMany({
+      where: { id: { in: uniqueUserIds } },
+      select: { id: true, username: true },
+    });
+    const userCache = new Map(users.map((u) => [u.id, u.username]));
+
     const historyMessages: ChatMessage[] = [];
 
     for (const msg of rawHistory.reverse()) {
@@ -114,10 +121,6 @@ export class ChatService implements IChatService {
       if (msg.role === "assistant") {
         senderName = "ไมเคิล";
       } else {
-        if (!userCache.has(msg.userId)) {
-          const u = await userRepository.findById(msg.userId);
-          userCache.set(msg.userId, u?.username ?? "someone");
-        }
         senderName = userCache.get(msg.userId) ?? "someone";
       }
 

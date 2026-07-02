@@ -29,7 +29,13 @@ export const config = {
   },
 
   gemini: {
-    apiKeys: requireEnv("GEMINI_API_KEYS").split(",").map((s) => s.trim()).filter(Boolean),
+    apiKeys: (() => {
+      const keys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY;
+      if (!keys) {
+        throw new Error("Missing required environment variable: GEMINI_API_KEYS or GEMINI_API_KEY");
+      }
+      return keys.split(",").map((s) => s.trim()).filter(Boolean);
+    })(),
     model: optionalEnv("GEMINI_MODEL", "gemini-2.0-flash"),
     maxTokens: parseInt(optionalEnv("GEMINI_MAX_TOKENS", "1024"), 10),
     temperature: parseFloat(optionalEnv("GEMINI_TEMPERATURE", "0.7")),
