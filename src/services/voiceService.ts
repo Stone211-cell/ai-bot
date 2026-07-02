@@ -167,21 +167,30 @@ class VoiceService {
 
       const tempPcmPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.pcm`);
       const tempWavPath = tempPcmPath.replace(".pcm", ".wav");
-      const writeStream = fs.createWriteStream(tempPcmPath);
+      const pcmChunks: Buffer[] = [];
+
+      opusStream.pipe(pcmDecoder);
+
+      pcmDecoder.on("data", (chunk) => {
+        pcmChunks.push(chunk);
+      });
+
+      pcmDecoder.on("error", (err) => {
+        voiceLogger.warn(`Opus decoder error for user ${userId}:`, { error: err.message });
+      });
 
       opusStream.on("error", (err) => {
         voiceLogger.error(`Opus stream error for user ${userId}:`, { error: err.message });
         this.isProcessingVoice = false;
       });
 
-      writeStream.on("error", (err) => {
-        voiceLogger.error(`Write stream error for user ${userId}:`, { error: err.message });
-        this.isProcessingVoice = false;
-      });
-
-      opusStream.pipe(pcmDecoder).pipe(writeStream);
-
-      writeStream.on("finish", async () => {
+      opusStream.on("end", async () => {
+        if (pcmChunks.length === 0) {
+          this.isProcessingVoice = false;
+          return;
+        }
+        
+        fs.writeFileSync(tempPcmPath, Buffer.concat(pcmChunks));
         voiceLogger.debug(`Finished receiving PCM audio from ${userId}, converting to WAV...`);
         
         const { default: ffmpegPath } = await import("ffmpeg-static");
