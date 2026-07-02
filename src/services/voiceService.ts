@@ -121,6 +121,8 @@ class VoiceService {
     });
   }
 
+  private isProcessingVoice: boolean = false;
+
   private setupAudioReceiver(channel: VoiceBasedChannel) {
     if (!this.connection) return;
 
@@ -131,12 +133,23 @@ class VoiceService {
       if (this.mode !== "talk") return;
       if (userId === channel.client.user?.id) return; // ไม่ฟังตัวเอง
 
+      // ถ้ากำลังคิดคำตอบ หรือ กำลังพูดอยู่ ให้เมินเสียงที่เข้ามาใหม่ทั้งหมด
+      // เพื่อป้องกันเสียงสะท้อน (Echo loop) และป้องกันการตอบย้อนหลัง (Backlog)
+      if (this.isPlaying || this.isProcessingVoice) return;
+      
+      this.isProcessingVoice = true;
+
+      // เผื่อเหนียว: ถ้ามันค้าง ให้ปลดล็อค processing อัตโนมัติใน 12 วินาที
+      setTimeout(() => {
+        this.isProcessingVoice = false;
+      }, 12000);
+
       voiceLogger.debug(`Started listening to user: ${userId}`);
 
       const opusStream = receiver.subscribe(userId, {
         end: {
           behavior: EndBehaviorType.AfterSilence,
-          duration: 700, // รอเงียบ 0.7 วินาทีถึงตัดจบไฟล์ (ลดดีเลย์)
+          duration: 500, // ลดเหลือ 0.5 วิ เพื่อให้ตอบสนองเร็วขึ้น
         },
       });
 
@@ -158,10 +171,12 @@ class VoiceService {
 
       opusStream.on("error", (err) => {
         voiceLogger.error(`Opus stream error for user ${userId}:`, { error: err.message });
+        this.isProcessingVoice = false;
       });
 
       writeStream.on("error", (err) => {
         voiceLogger.error(`Write stream error for user ${userId}:`, { error: err.message });
+        this.isProcessingVoice = false;
       });
 
       opusStream.pipe(pcmDecoder).pipe(writeStream);
@@ -193,6 +208,7 @@ class VoiceService {
             if (fs.existsSync(tempWavPath)) {
               fs.unlink(tempWavPath, () => {});
             }
+            this.isProcessingVoice = false;
             return;
           }
 
@@ -235,6 +251,9 @@ class VoiceService {
             if (fs.existsSync(tempWavPath)) {
               fs.unlink(tempWavPath, () => {});
             }
+          } finally {
+            // ปลดล็อคสถานะประมวลผล เพื่อให้เริ่มรับเสียงประโยคใหม่ได้
+            this.isProcessingVoice = false;
           }
         });
       });
