@@ -51,8 +51,30 @@ export class ElevenLabsService {
       return createAudioResource(response.data);
 
     } catch (error: any) {
+      let errorDetail = error.message;
+
+      // ถ้าเป็น stream response ต้องอ่าน chunk ออกมาเป็น text ถึงจะรู้ว่า ElevenLabs ส่งอะไรผิดพลาดกลับมา
+      if (error.response?.data && typeof error.response.data.on === "function") {
+        try {
+          errorDetail = await new Promise<string>((resolve) => {
+            let body = "";
+            error.response.data.on("data", (chunk: any) => {
+              body += chunk.toString();
+            });
+            error.response.data.on("end", () => {
+              resolve(body || `HTTP Status ${error.response.status}`);
+            });
+            error.response.data.on("error", (err: any) => {
+              resolve(`Stream Error: ${err.message}`);
+            });
+          });
+        } catch (e: any) {
+          errorDetail = `Failed to parse stream error: ${e.message}`;
+        }
+      }
+
       elevenLogger.error("ElevenLabs TTS failed. Falling back to EdgeTTS.", { 
-        error: error.response?.data ? error.response.data.toString() : error.message 
+        error: errorDetail
       });
       return this.fallbackToEdgeTTS(text, tempFilePath);
     }

@@ -94,7 +94,7 @@ class VoiceService {
       voiceLogger.error("Voice connection failed to become Ready (UDP Timeout)", { err });
       this.connection.destroy();
       this.connection = null;
-      return;
+      throw new Error("Voice connection failed to become Ready (UDP Timeout)");
     }
 
     this.connection.subscribe(this.player);
@@ -139,16 +139,18 @@ class VoiceService {
         },
       });
 
-      const oggEncoder = new prism.opus.Encoder({
-        rate: 48000,
-        channels: 2,
-        frameSize: 960,
+      const oggStream = new (prism.opus as any).OggLogicalBitstream({
+        opusHead: new (prism.opus as any).OpusHead({
+          channelCount: 2,
+          sampleRate: 48000,
+        }),
+        pageSizeControl: { maxPackets: 10 },
       });
 
-      const tempAudioPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.pcm`);
+      const tempAudioPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.ogg`);
       const writeStream = fs.createWriteStream(tempAudioPath);
 
-      opusStream.pipe(oggEncoder).pipe(writeStream);
+      opusStream.pipe(oggStream).pipe(writeStream);
 
       writeStream.on("finish", async () => {
         voiceLogger.debug(`Finished receiving audio from ${userId}, sending to STT...`);
