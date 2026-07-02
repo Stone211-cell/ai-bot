@@ -149,7 +149,7 @@ class VoiceService {
       const opusStream = receiver.subscribe(userId, {
         end: {
           behavior: EndBehaviorType.AfterSilence,
-          duration: 500, // ลดเหลือ 0.5 วิ เพื่อให้ตอบสนองเร็วขึ้น
+          duration: 250, // ลดเหลือ 0.25 วิ เพื่อให้ตอบสนองไวแสง
         },
       });
 

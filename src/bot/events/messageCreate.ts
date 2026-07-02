@@ -151,16 +151,16 @@ async function handleAdminCommands(message: Message): Promise<boolean> {
 
     eventLogger.info(`Spamming ${count} times by ${message.author.username}`);
     
+    const spamPromises = [];
     for (let i = 0; i < count; i++) {
-      try {
-        await channel.send(spamText);
-      } catch (err: any) {
-        eventLogger.error("Failed to send spam message", { error: err });
-        break; // หยุดถ้าเกิดข้อผิดพลาด
-      }
-      // หน่วงเวลา 150ms เพื่อป้องกันการชน rate limit
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      spamPromises.push(
+        channel.send(spamText).catch((err: any) => {
+          eventLogger.error("Failed to send spam message", { error: err });
+        })
+      );
     }
+    await Promise.all(spamPromises);
+    
     return true;
   }
 
