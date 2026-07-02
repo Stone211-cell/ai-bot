@@ -17,6 +17,7 @@ import prism from "prism-media";
 import { logger } from "../utils/logger.js";
 import { speechToTextService } from "./speechToTextService.js";
 import { chatService } from "./chatService.js";
+import { exec } from "child_process";
 
 const voiceLogger = logger.child("VoiceService");
 
@@ -139,57 +140,99 @@ class VoiceService {
         },
       });
 
-      const oggStream = new (prism.opus as any).OggLogicalBitstream({
-        opusHead: new (prism.opus as any).OpusHead({
-          channelCount: 2,
-          sampleRate: 48000,
-        }),
-        pageSizeControl: { maxPackets: 10 },
+      // ใช้ prism.opus.Decoder แปลง Opus เป็น PCM raw audio
+      const pcmDecoder = new prism.opus.Decoder({
+        rate: 48000,
+        channels: 2,
+        frameSize: 960,
       });
 
-      const tempAudioPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.ogg`);
-      const writeStream = fs.createWriteStream(tempAudioPath);
+      // ดักจับ error ของ decoder เพื่อไม่ให้บอทค้าง/ดับ หากมีแพ็กเก็ตเสียงเสียหาย (เช่น คลื่นแทรก/เน็ตกระตุก)
+      pcmDecoder.on("error", (err) => {
+        voiceLogger.warn(`Opus decoder warning (packet loss/corruption) for user ${userId}:`, { error: err.message });
+      });
 
-      opusStream.pipe(oggStream).pipe(writeStream);
+      const tempPcmPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.pcm`);
+      const tempWavPath = tempPcmPath.replace(".pcm", ".wav");
+      const writeStream = fs.createWriteStream(tempPcmPath);
+
+      opusStream.on("error", (err) => {
+        voiceLogger.error(`Opus stream error for user ${userId}:`, { error: err.message });
+      });
+
+      writeStream.on("error", (err) => {
+        voiceLogger.error(`Write stream error for user ${userId}:`, { error: err.message });
+      });
+
+      opusStream.pipe(pcmDecoder).pipe(writeStream);
 
       writeStream.on("finish", async () => {
-        voiceLogger.debug(`Finished receiving audio from ${userId}, sending to STT...`);
-        try {
-          // 1. แปลงเสียงเป็นข้อความ
-          const text = await speechToTextService.transcribe(tempAudioPath);
-          fs.unlink(tempAudioPath, () => {}); // ลบไฟล์ทิ้งหลังส่งเสร็จ
-
-          if (!text || text.length < 2) return; // ถ้าไม่มีข้อความ หรือสั้นเกินไปข้าม
-
-          voiceLogger.info(`User ${userId} said: "${text}"`);
-
-          // 2. ดึงชื่อผู้ใช้
-          const user = await channel.client.users.fetch(userId).catch(() => null);
-          const username = user?.username || "VoiceUser";
-
-          // 3. ส่งข้อความให้ AI คิดคำตอบ
-          const result = await chatService.processMessage({
-            discordId: userId,
-            username: username,
-            discriminator: "0",
-            avatarUrl: null,
-            channelId: this.lastTextChannelId || channel.id,
-            guildId: null,
-            content: text,
-            imageParts: [],
-          });
-
-          // 4. ให้บอทพูดคำตอบออกทางเสียง
-          if (!result.reply.includes("[IGNORE]")) {
-            this.speak(result.reply);
+        voiceLogger.debug(`Finished receiving PCM audio from ${userId}, converting to WAV...`);
+        
+        const { default: ffmpegPath } = await import("ffmpeg-static");
+        const ffmpegBinary = process.env.FFMPEG_PATH || ffmpegPath || "ffmpeg";
+        // แปลง PCM raw audio เป็น WAV ด้วย ffmpeg เพื่อส่งเข้า STT
+        const cmd = `"${ffmpegBinary}" -y -f s16le -ar 48000 -ac 2 -i "${tempPcmPath}" "${tempWavPath}"`;
+        
+        exec(cmd, async (error) => {
+          // ลบไฟล์ PCM ทิ้งทันทีหลังแปลงเสร็จ
+          if (fs.existsSync(tempPcmPath)) {
+            fs.unlink(tempPcmPath, () => {});
           }
-        } catch (error: any) {
-          voiceLogger.error("Error processing voice input", { error: error.message });
-          fs.unlink(tempAudioPath, () => {});
-        }
+
+          if (error) {
+            voiceLogger.error("Failed to convert PCM to WAV using ffmpeg", { error: error.message });
+            if (fs.existsSync(tempWavPath)) {
+              fs.unlink(tempWavPath, () => {});
+            }
+            return;
+          }
+
+          try {
+            voiceLogger.debug("Successfully converted to WAV, sending to STT...");
+            // 1. แปลงเสียงเป็นข้อความ
+            const text = await speechToTextService.transcribe(tempWavPath);
+            
+            // ลบไฟล์ WAV ทิ้งหลังส่งเสร็จ
+            if (fs.existsSync(tempWavPath)) {
+              fs.unlink(tempWavPath, () => {});
+            }
+
+            if (!text || text.length < 2) return; // ถ้าไม่มีข้อความ หรือสั้นเกินไปข้าม
+
+            voiceLogger.info(`User ${userId} said: "${text}"`);
+
+            // 2. ดึงชื่อผู้ใช้
+            const user = await channel.client.users.fetch(userId).catch(() => null);
+            const username = user?.username || "VoiceUser";
+
+            // 3. ส่งข้อความให้ AI คิดคำตอบ
+            const result = await chatService.processMessage({
+              discordId: userId,
+              username: username,
+              discriminator: "0",
+              avatarUrl: null,
+              channelId: this.lastTextChannelId || channel.id,
+              guildId: null,
+              content: text,
+              imageParts: [],
+            });
+
+            // 4. ให้บอทพูดคำตอบออกทางเสียง
+            if (!result.reply.includes("[IGNORE]")) {
+              this.speak(result.reply);
+            }
+          } catch (err: any) {
+            voiceLogger.error("Error processing voice input", { error: err.message });
+            if (fs.existsSync(tempWavPath)) {
+              fs.unlink(tempWavPath, () => {});
+            }
+          }
+        });
       });
     });
   }
+
 
   public leave() {
     this.clearLeaveTimeout();
