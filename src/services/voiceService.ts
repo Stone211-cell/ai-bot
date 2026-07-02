@@ -17,7 +17,7 @@ import prism from "prism-media";
 import { logger } from "../utils/logger.js";
 import { speechToTextService } from "./speechToTextService.js";
 import { chatService } from "./chatService.js";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 
 const voiceLogger = logger.child("VoiceService");
 
@@ -171,10 +171,18 @@ class VoiceService {
         
         const { default: ffmpegPath } = await import("ffmpeg-static");
         const ffmpegBinary = process.env.FFMPEG_PATH || ffmpegPath || "ffmpeg";
-        // แปลง PCM raw audio เป็น WAV ด้วย ffmpeg เพื่อส่งเข้า STT
-        const cmd = `"${ffmpegBinary}" -y -f s16le -ar 48000 -ac 2 -i "${tempPcmPath}" "${tempWavPath}"`;
         
-        exec(cmd, async (error) => {
+        // ใช้ execFile แทน exec เพื่อหลีกเลี่ยงปัญหา Double Quotes ใน cmd.exe ของ Windows
+        const args = [
+          "-y",
+          "-f", "s16le",
+          "-ar", "48000",
+          "-ac", "2",
+          "-i", tempPcmPath,
+          tempWavPath
+        ];
+        
+        execFile(ffmpegBinary, args, async (error) => {
           // ลบไฟล์ PCM ทิ้งทันทีหลังแปลงเสร็จ
           if (fs.existsSync(tempPcmPath)) {
             fs.unlink(tempPcmPath, () => {});
