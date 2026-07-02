@@ -126,10 +126,17 @@ export class GeminiService implements IGeminiService {
           });
         }
 
-        const text = response.text;
+        let text = "";
+        try {
+          text = response.text || "";
+        } catch (e) {
+          // Gemini SDK getter for text throws if blocked by safety or no parts exist
+          aiLogger.warn("Gemini text getter threw an error (possibly safety blocked)", { error: e });
+        }
 
         if (!text) {
-          throw new Error("Gemini returned an empty response");
+          aiLogger.warn("Gemini returned an empty response. Using fallback.");
+          text = "[IGNORE]";
         }
 
         const promptTokens = response.usageMetadata?.promptTokenCount ?? 0;
