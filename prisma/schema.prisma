@@ -16,6 +16,7 @@ model User {
   id            String        @id @default(cuid())
   discordId     String        @unique @map("discord_id")
   username      String
+  nickname      String?       // ชื่อเล่นภาษาไทยของผู้ใช้งาน
   discriminator String        @default("0")
   avatarUrl            String?       @map("avatar_url")
   isBot                Boolean       @default(false) @map("is_bot")
@@ -55,4 +56,44 @@ model GlobalKnowledge {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("global_knowledge")
+}
+
+model Category {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  type       String      // "ARTICLE" หรือ "PORTFOLIO"
+  createdAt  DateTime    @default(now())
+  articles   Article[]
+  portfolios Portfolio[]
+}
+
+model Article {
+  id          String    @id @default(cuid())
+  title       String
+  excerpt     String
+  content     String    @db.Text
+  image       String
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  author      String    @default("ช่างมิลการประปา")
+  slug        String    @unique
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Portfolio {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  image       String
+  videoUrl    String?
+  postUrl     String?
+  mediaType   String    @default("image") // "image" หรือ "video"
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  featured    Boolean   @default(false)
+  displayOrder Int       @default(1000)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

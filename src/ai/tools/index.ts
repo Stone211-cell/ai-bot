@@ -85,6 +85,24 @@ export const functionDeclarations = [
       required: ["caller_username", "target_username"],
     },
   },
+  {
+    name: "save_nickname",
+    description: "Save or update the nickname (ชื่อเล่น) of a user in the database. Use this IMMEDIATELY when a user tells you their nickname.",
+    parameters: {
+      type: "OBJECT" as unknown as Type,
+      properties: {
+        discord_id: {
+          type: "STRING" as unknown as Type,
+          description: "The discord ID of the user whose nickname you want to save.",
+        },
+        nickname: {
+          type: "STRING" as unknown as Type,
+          description: "The Thai nickname (ชื่อเล่น) of the user (e.g., 'แอล', 'บอม', 'บีม')",
+        },
+      },
+      required: ["nickname"], // make discord_id optional for the AI
+    },
+  },
 ];
 
 export async function handleFunctionCall(
@@ -92,10 +110,22 @@ export async function handleFunctionCall(
   args: Record<string, any>,
   contextUser: string,
   guildId?: string | null,
+  contextDiscordId?: string,
 ): Promise<string> {
-  toolsLogger.info("Function called", { name, args, contextUser });
+  toolsLogger.info("Function called", { name, args, contextUser, contextDiscordId });
 
   switch (name) {
+    // ── save_nickname ────────────────────────────────────────────────────────
+    case "save_nickname": {
+      const { nickname } = args;
+      const targetId = args.discord_id || contextDiscordId;
+      if (!targetId) {
+        return "ERROR: Missing user discord ID.";
+      }
+      await userRepository.saveNickname(targetId, nickname);
+      return `จำไว้แล้วว่า ${targetId} มีชื่อเล่นว่า "${nickname}"`;
+    }
+
     // ── learn_fact ───────────────────────────────────────────────────────────
     case "learn_fact": {
       const { topic, fact } = args;

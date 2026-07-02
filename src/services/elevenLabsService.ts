@@ -8,81 +8,120 @@ import { createAudioResource, AudioResource, StreamType } from "@discordjs/voice
 const elevenLogger = logger.child("ElevenLabs");
 
 export class ElevenLabsService {
-  private apiKey: string;
+  private apiKeys: string[] = [];
+  private currentKeyIndex = 0;
   private voiceId: string;
 
   constructor() {
-    this.apiKey = process.env.ELEVENLABS_API_KEY || "";
+    const rawKeys = process.env.ELEVENLABS_API_KEY || "";
+    this.apiKeys = rawKeys.split(",").map((k) => k.trim()).filter(Boolean);
     this.voiceId = process.env.ELEVENLABS_VOICE_ID || "TX3OmTkNgV0Rwal3s77d"; // Liam (Premade Voice)
+  }
+
+  private getApiKey(): string {
+    if (this.apiKeys.length === 0) return "";
+    return this.apiKeys[this.currentKeyIndex] || "";
+  }
+
+  private rotateKey() {
+    if (this.apiKeys.length > 1) {
+      this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+      elevenLogger.warn("Rotated ElevenLabs API Key to index " + this.currentKeyIndex);
+    }
   }
 
   /**
    * สร้างไฟล์เสียง TTS และคืนค่าเป็น AudioResource
    */
   public async generateAudio(text: string, tempFilePath: string): Promise<AudioResource> {
-    if (!this.apiKey) {
-      elevenLogger.info("No ElevenLabs API key found, falling back to EdgeTTS");
+    const provider = (process.env.TTS_PROVIDER || "elevenlabs").toLowerCase();
+    const apiKey = this.getApiKey();
+
+    if (provider === "edgetts" || !apiKey) {
+      elevenLogger.info("Using EdgeTTS provider for native Thai audio");
       return this.fallbackToEdgeTTS(text, tempFilePath);
     }
 
-    try {
-      elevenLogger.debug("Requesting ElevenLabs TTS for: \"" + text.substring(0, 50) + "\"");
-      
-      const response = await axios.post(
-        "https://api.elevenlabs.io/v1/text-to-speech/" + this.voiceId + "?optimize_streaming_latency=3",
-        {
-          text: text,
-          model_id: "eleven_multilingual_v2", // V2 รองรับภาษาไทยได้สมจริงที่สุด
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-          }
-        },
-        {
-          headers: {
-            "xi-api-key": this.apiKey,
-            "Content-Type": "application/json"
+    const maxRetries = this.apiKeys.length;
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      const activeKey = this.getApiKey();
+      try {
+        elevenLogger.debug("Requesting ElevenLabs TTS for: \"" + text.substring(0, 50) + "\" using key index " + this.currentKeyIndex);
+        
+        const response = await axios.post(
+          "https://api.elevenlabs.io/v1/text-to-speech/" + this.voiceId + "?optimize_streaming_latency=3",
+          {
+            text: text,
+            model_id: "eleven_multilingual_v2", // V2 รองรับภาษาไทยได้สมจริงที่สุด
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+            }
           },
-          responseType: "stream"
+          {
+            headers: {
+              "xi-api-key": activeKey,
+              "Content-Type": "application/json"
+            },
+            responseType: "stream"
+          }
+        );
+
+        elevenLogger.debug("ElevenLabs TTS streaming started");
+        return createAudioResource(response.data);
+
+      } catch (error: any) {
+        attempt++;
+        let errorDetail = error.message;
+
+        // ถ้าเป็น stream response ต้องอ่าน chunk ออกมาเป็น text ถึงจะรู้ว่า ElevenLabs ส่งอะไรผิดพลาดกลับมา
+        if (error.response?.data && typeof error.response.data.on === "function") {
+          try {
+            errorDetail = await new Promise<string>((resolve) => {
+              let body = "";
+              error.response.data.on("data", (chunk: any) => {
+                body += chunk.toString();
+              });
+              error.response.data.on("end", () => {
+                resolve(body || "HTTP Status " + error.response.status);
+              });
+              error.response.data.on("error", (err: any) => {
+                resolve("Stream Error: " + err.message);
+              });
+            });
+          } catch (e: any) {
+            errorDetail = "Failed to parse stream error: " + e.message;
+          }
         }
-      );
 
-      elevenLogger.debug("ElevenLabs TTS streaming started");
-      return createAudioResource(response.data);
+        const isQuotaExceeded = errorDetail.toLowerCase().includes("quota") || 
+                               errorDetail.toLowerCase().includes("insufficient") || 
+                               error.response?.status === 401 || 
+                               error.response?.status === 429;
 
-    } catch (error: any) {
-      let errorDetail = error.message;
-
-      // ถ้าเป็น stream response ต้องอ่าน chunk ออกมาเป็น text ถึงจะรู้ว่า ElevenLabs ส่งอะไรผิดพลาดกลับมา
-      if (error.response?.data && typeof error.response.data.on === "function") {
-        try {
-          errorDetail = await new Promise<string>((resolve) => {
-            let body = "";
-            error.response.data.on("data", (chunk: any) => {
-              body += chunk.toString();
-            });
-            error.response.data.on("end", () => {
-              resolve(body || "HTTP Status " + error.response.status);
-            });
-            error.response.data.on("error", (err: any) => {
-              resolve("Stream Error: " + err.message);
-            });
-          });
-        } catch (e: any) {
-          errorDetail = "Failed to parse stream error: " + e.message;
+        if (isQuotaExceeded && attempt < maxRetries) {
+          elevenLogger.warn("ElevenLabs key quota/limit exceeded. Rotating key and retrying...", { attempt });
+          this.rotateKey();
+          continue;
         }
+
+        elevenLogger.error("ElevenLabs TTS failed. Falling back to EdgeTTS.", { 
+          error: errorDetail
+        });
+        return this.fallbackToEdgeTTS(text, tempFilePath);
       }
-
-      elevenLogger.error("ElevenLabs TTS failed. Falling back to EdgeTTS.", { 
-        error: errorDetail
-      });
-      return this.fallbackToEdgeTTS(text, tempFilePath);
     }
+
+    elevenLogger.info("All ElevenLabs keys failed. Falling back to EdgeTTS.");
+    return this.fallbackToEdgeTTS(text, tempFilePath);
   }
 
   private async fallbackToEdgeTTS(text: string, tempFilePath: string): Promise<AudioResource> {
+    const voice = process.env.EDGETTS_VOICE || "th-TH-NiwatNeural";
     const tts = new EdgeTTS({
-      voice: "th-TH-NiwatNeural",
+      voice: voice,
       lang: "th-TH",
       outputFormat: "webm-24khz-16bit-mono-opus",
     });

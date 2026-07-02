@@ -136,7 +136,10 @@ export class ChatService implements IChatService {
 
     const systemPrompt = buildSystemPrompt({
       username: ctx.username,
+      userNickname: user.nickname,
       summary: user.summary,
+      affinity: user.affinity,
+      relationshipStatus: user.relationshipStatus,
       globalKnowledge,
       favoriteUsers: relationshipHighlights.favoriteUsers,
       dislikedUsers: relationshipHighlights.dislikedUsers,
@@ -149,6 +152,7 @@ export class ChatService implements IChatService {
     const completion = await geminiService.chat({
       messages,
       contextUsername: ctx.username,
+      contextDiscordId: ctx.discordId,
       guildId: ctx.guildId,  // ส่งไปให้ AI tools ใช้ (เช่น kick_member)
     });
 

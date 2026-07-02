@@ -63,7 +63,7 @@ export const interactionCreateEvent: BotEvent = {
           return;
         }
 
-        voiceService.setMode("talk");
+        voiceService.setMode("read");
         await voiceService.join(voiceChannel, interaction.channelId);
 
         await interaction.deleteReply();

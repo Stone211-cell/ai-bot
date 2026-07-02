@@ -91,13 +91,24 @@ export class GeminiService implements IGeminiService {
             call.args as Record<string, any>, 
             options.contextUsername || "unknown",
             options.guildId ?? null,
+            options.contextDiscordId,
           );
 
           // Append to contents and call again
-          contents.push({
-            role: "model",
-            parts: [{ functionCall: call }],
-          });
+          // ส่งอ็อบเจกต์ Candidates Content ดิบกลับเข้าไปตรงๆ เพื่อรักษา thought_signature ไว้ให้ครบถ้วนตามมาตรฐานใหม่ของ Google
+          if (response.candidates?.[0]?.content) {
+            const contentObj = response.candidates[0].content;
+            contents.push({
+              role: contentObj.role || "model",
+              parts: contentObj.parts as any[],
+            });
+          } else {
+            contents.push({
+              role: "model",
+              parts: [{ functionCall: call }],
+            });
+          }
+
           contents.push({
             role: "user",
             parts: [{ functionResponse: { name: call.name!, response: { result: functionResult } } }],
@@ -143,10 +154,15 @@ export class GeminiService implements IGeminiService {
       } catch (error: any) {
         attempt++;
         const message = error?.message || String(error);
-        const isRateLimit = message.includes("429") || message.includes("RESOURCE_EXHAUSTED");
+        const shouldRetry = message.includes("429") || 
+                            message.includes("RESOURCE_EXHAUSTED") || 
+                            message.includes("503") || 
+                            message.includes("UNAVAILABLE") || 
+                            message.includes("500") || 
+                            message.includes("INTERNAL");
 
-        if (isRateLimit && attempt < maxRetries) {
-          aiLogger.warn("Gemini API Rate Limit Hit (429). Rotating key and retrying...", { attempt });
+        if (shouldRetry && attempt < maxRetries) {
+          aiLogger.warn(`Gemini API Temporary Error (${message}). Rotating key and retrying...`, { attempt });
           this.rotateKey();
           continue;
         }
@@ -160,7 +176,7 @@ export class GeminiService implements IGeminiService {
       }
     }
     
-    throw new Error("All Gemini API keys failed (Rate Limit exceeded)");
+    throw new Error("All Gemini API keys failed (Rate Limit or Service Unavailable)");
   }
 }
 

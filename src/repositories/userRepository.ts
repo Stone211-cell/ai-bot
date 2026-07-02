@@ -10,6 +10,7 @@ export interface IUserRepository {
   getRelationshipHighlights(limit?: number): Promise<{ favoriteUsers: string[]; dislikedUsers: string[] }>;
   updateAffinity(discordId: string, delta: number, relationshipStatus?: string | null): Promise<User>;
   setRelationshipStatus(discordId: string, relationshipStatus: string | null): Promise<User>;
+  saveNickname(discordId: string, nickname: string): Promise<User>;
   updateSummary(discordId: string, summary: string): Promise<User>;
   incrementMsgCount(discordId: string): Promise<User>;
   resetMsgCount(discordId: string): Promise<User>;
@@ -77,6 +78,41 @@ export class UserRepository implements IUserRepository {
         data: { relationshipStatus },
       }),
     );
+  }
+
+  saveNickname(discordId: string, nickname: string): Promise<User> {
+    return withDbError("User.saveNickname", { discordId, nickname }, async () => {
+      // 1. ลองหา/อัพเดตตรงๆ ด้วย discordId (ถ้าเป็นตัวเลขล้วน)
+      if (/^\d+$/.test(discordId)) {
+        try {
+          return await prisma.user.update({
+            where: { discordId },
+            data: { nickname },
+          });
+        } catch (err) {
+          // ถ้าเกิดหาไม่เจอในขั้นตอนนี้ ค่อยเลื่อนไปค้นหาด้วย username ด้านล่าง
+        }
+      }
+
+      // 2. ถ้าไม่ใช่ตัวเลข หรือหาด้วย id ไม่เจอ ให้หาจาก username หรือ nickname (case-insensitive)
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: { equals: discordId, mode: "insensitive" } },
+            { nickname: { equals: discordId, mode: "insensitive" } },
+          ],
+        },
+      });
+
+      if (!user) {
+        throw new Error(`User with ID or Username "${discordId}" not found in database.`);
+      }
+
+      return prisma.user.update({
+        where: { id: user.id },
+        data: { nickname },
+      });
+    });
   }
 
   upsert(dto: CreateUserDto): Promise<User> {

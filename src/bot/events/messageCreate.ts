@@ -7,6 +7,7 @@ import { messageHandler } from "../handlers/messageHandler.js";
 import { voiceService } from "../../services/voiceService.js";
 import { chatService } from "../../services/chatService.js";
 import type { DiscordMessageContext } from "../../types/index.js";
+import { antiSpam } from "../../utils/antiSpam.js";
 
 const eventLogger = logger.child("MessageCreateEvent");
 
@@ -20,70 +21,150 @@ const CREATOR_USERNAME = "bibi.ubu";
  * เช่น: "เตะ @Antistrofa 19052006"
  * Returns true ถ้าจัดการ kick แล้ว (ไม่ต้องส่งต่อ AI)
  */
-async function handleKickCommand(message: Message): Promise<boolean> {
+/**
+ * ตรวจและจัดการคำสั่งแอดมินสำหรับผู้สร้าง (bibi.ubu) โดยตรง ไม่ผ่าน AI
+ * ลบข้อความที่สั่งทันทีเพื่อไม่ให้คนอื่นเห็นรหัสผ่าน
+ * Returns true ถ้าจัดการคำสั่งแล้ว
+ */
+async function handleAdminCommands(message: Message): Promise<boolean> {
   // เฉพาะ bibi.ubu เท่านั้น
   if (message.author.username !== CREATOR_USERNAME) return false;
 
   const content = message.content.trim();
 
-  // ต้องมีคำว่า "เตะ" หรือ "kick" นำหน้า
-  const isKickIntent = /^(เตะ|kick)\s/i.test(content);
-  if (!isKickIntent) return false;
+  // ต้องมีรหัสลับนำหน้าหรือมีอยู่ในข้อความ
+  if (!content.includes(KICK_SECRET)) return false;
 
-  // ต้องมี @mention อย่างน้อย 1 คน
-  const mentionedUsers = message.mentions.members;
-  if (!mentionedUsers || mentionedUsers.size === 0) return false;
+  // พยายามลบข้อความต้นทางทันทีเพื่อป้องกันคนอื่นเห็นรหัสผ่าน
+  try {
+    if (message.deletable) {
+      await message.delete();
+    }
+  } catch (err) {
+    eventLogger.warn("Failed to delete creator command message (missing Manage Messages permission?)", { error: err });
+  }
 
-  // ดึง password จากข้อความ (คำสุดท้าย)
-  // ลบ mention tags ออกก่อน แล้วดึงคำสุดท้ายที่เป็นตัวเลข
-  const withoutMentions = content.replace(/<@!?\d+>/g, "").trim();
-  const words = withoutMentions.split(/\s+/).filter(Boolean);
-  // หา token ที่เป็นรหัสลับ (คำไหนก็ได้ในข้อความที่ตรง)
-  const passwordProvided = words.includes(KICK_SECRET);
+  const channel = message.channel as any;
 
-  if (!passwordProvided) {
-    // รหัสผิด — ตอบกลับเงียบๆ ไม่บอกว่าผิด (security)
-    await message.reply("รหัสไม่ถูกนะ");
+  // 1. คำสั่งลบช่อง (Delete current channel)
+  // Format: "ลบช่อง 19052006"
+  if (/^ลบช่อง\s+/i.test(content)) {
+    try {
+      eventLogger.info(`Channel ${message.channelId} is being deleted by ${message.author.username}`);
+      await channel.send("กำลังลบช่องนี้ตามคำสั่งเจ้านาย...");
+      
+      // หน่วงเวลาเล็กน้อยเพื่อให้ส่งข้อความตอบกลับเสร็จก่อนลบช่องจริง
+      setTimeout(async () => {
+        try {
+          await message.channel.delete(`สั่งโดยผู้สร้าง ${CREATOR_USERNAME}`);
+        } catch (err: any) {
+          eventLogger.error("Failed to delete channel", { error: err });
+        }
+      }, 1000);
+      return true;
+    } catch (err: any) {
+      eventLogger.error("Delete channel failed", { error: err });
+      return true;
+    }
+  }
+
+  // 2. คำสั่งออกเซิร์ฟเวอร์/ลบดิส (Leave Guild)
+  // Format: "ออกดิส 19052006" หรือ "ลบดิส 19052006"
+  if (/^(ออกดิส|ลบดิส)\s+/i.test(content)) {
+    if (!message.guild) return false;
+    try {
+      eventLogger.info(`Leaving guild ${message.guild.name} (${message.guildId}) by ${message.author.username}`);
+      await channel.send("ลาก่อนครับเจ้านาย...");
+      
+      const guild = message.guild;
+      // หน่วงเวลาเล็กน้อยเพื่อให้ส่งข้อความเสร็จก่อนออก
+      setTimeout(async () => {
+        try {
+          await guild.leave();
+        } catch (err: any) {
+          eventLogger.error("Failed to leave guild", { error: err });
+        }
+      }, 1000);
+      return true;
+    } catch (err: any) {
+      eventLogger.error("Leave guild failed", { error: err });
+      return true;
+    }
+  }
+
+  // 3. คำสั่งเตะสมาชิก (Kick)
+  // Format: "เตะ @user 19052006"
+  if (/^(เตะ|kick)\s/i.test(content)) {
+    const mentionedUsers = message.mentions.members;
+    if (!mentionedUsers || mentionedUsers.size === 0) return false;
+
+    const results: string[] = [];
+    for (const [, member] of mentionedUsers) {
+      if (member.user.id === message.client.user?.id) {
+        results.push(`❌ กูไม่เตะตัวเองหรอก`);
+        continue;
+      }
+      if (member.user.username === CREATOR_USERNAME) {
+        results.push(`❌ กูไม่เตะลูกพี่`);
+        continue;
+      }
+      try {
+        const displayName = member.displayName;
+        await member.kick(`สั่งโดย ${CREATOR_USERNAME}`);
+        results.push(`✅ เตะ ${displayName} ออกไปแล้ว`);
+        eventLogger.info("Member kicked via direct command", {
+          target: member.user.username,
+          by: message.author.username,
+        });
+      } catch (err: any) {
+        if (err?.code === 50013) {
+          results.push(`❌ ไม่มีสิทธิ์เตะ ${member.displayName} — บอทต้องมี role สูงกว่าเขา`);
+        } else {
+          results.push(`❌ เตะ ${member.displayName} ไม่ได้: ${err?.message ?? "unknown"}`);
+        }
+      }
+    }
+    if (results.length > 0) {
+      await channel.send(results.join("\n"));
+    }
     return true;
   }
 
-  // ── เตะทุกคนที่ถูก @mention ─────────────────────────────────────────────
-  const results: string[] = [];
-
-  for (const [, member] of mentionedUsers) {
-    // Safety checks
-    if (member.user.id === message.client.user?.id) {
-      results.push(`❌ กูไม่เตะตัวเองหรอก`);
-      continue;
-    }
-    if (member.user.username === CREATOR_USERNAME) {
-      results.push(`❌ กูไม่เตะลูกพี่`);
-      continue;
+  // 4. คำสั่งสแปมข้อความ (Spam)
+  // Format: "สั่งสแปม <จำนวนครั้ง> <ข้อความ> 19052006"
+  if (/^(สั่งสแปม|spam)\s+/i.test(content)) {
+    const withoutSecret = content.replace(KICK_SECRET, "").trim();
+    // ดึงตัวเลขและข้อความที่ต้องการสแปม
+    const match = withoutSecret.match(/^(สั่งสแปม|spam)\s+(\d+)\s+(.+)$/i);
+    if (!match) {
+      await channel.send("รูปแบบไม่ถูกครับเจ้านาย ต้องเป็น: สั่งสแปม <จำนวนครั้ง> <ข้อความ> รหัสลับ");
+      return true;
     }
 
-    try {
-      const displayName = member.displayName;
-      await member.kick(`สั่งโดย ${CREATOR_USERNAME}`);
-      results.push(`✅ เตะ ${displayName} ออกไปแล้ว`);
-      eventLogger.info("Member kicked via direct command", {
-        target: member.user.username,
-        by: message.author.username,
-      });
-    } catch (err: any) {
-      if (err?.code === 50013) {
-        results.push(`❌ ไม่มีสิทธิ์เตะ ${member.displayName} — บอทต้องมี role สูงกว่าเขา`);
-      } else {
-        results.push(`❌ เตะ ${member.displayName} ไม่ได้: ${err?.message ?? "unknown"}`);
+    const count = Math.min(20, parseInt(match[2]!, 10)); // จำกัดสูงสุด 20 ครั้ง
+    const spamText = match[3]!.trim();
+
+    if (count <= 0 || !spamText) {
+      await channel.send("ระบุจำนวนครั้งหรือข้อความไม่ถูกต้อง");
+      return true;
+    }
+
+    eventLogger.info(`Spamming ${count} times by ${message.author.username}`);
+    
+    for (let i = 0; i < count; i++) {
+      try {
+        await channel.send(spamText);
+      } catch (err: any) {
+        eventLogger.error("Failed to send spam message", { error: err });
+        break; // หยุดถ้าเกิดข้อผิดพลาด
       }
-      eventLogger.error("Kick failed", { error: err, target: member.user.username });
+      // หน่วงเวลา 150ms เพื่อป้องกันการชน rate limit
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
+    return true;
   }
 
-  if (results.length > 0) {
-    await message.reply(results.join("\n"));
-  }
-
-  return true;
+  return false;
 }
 
 export const messageCreateEvent: BotEvent = {
@@ -107,6 +188,36 @@ export const messageCreateEvent: BotEvent = {
 
     if (!message.content.trim() && message.attachments.size === 0) return;
 
+    // ── Creator Admin Commands (ตรวจสอบก่อนเสมอและซ่อนข้อความทันที) ────────
+    try {
+      const wasAdminCmd = await handleAdminCommands(message);
+      if (wasAdminCmd) return;
+    } catch (error) {
+      handleError(error, "AdminCommands");
+    }
+
+    // ลบ mention tag ออกจาก content และดูว่ามีรูปไหม
+    const cleanContent = message.content.replace(/<@!?\d+>/g, "").trim();
+    const hasImageAttachment = message.attachments.some((a) => a.contentType?.startsWith("image/"));
+
+    // ── Anti-Spam (Content Filter) ────────────────────────────────────────
+    if (antiSpam.isSpammyContent(cleanContent) && !hasImageAttachment) {
+      eventLogger.debug(`Ignored spammy/meaningless message from ${message.author.username}`);
+      return;
+    }
+
+    // ── Rate Limiting (Cooldown) ──────────────────────────────────────────
+    const rateLimitStatus = antiSpam.checkRateLimit(message.author.id);
+    if (rateLimitStatus === "ignored") return;
+    if (rateLimitStatus === "warn") {
+      try {
+        await message.reply("ใจเย็นๆ สิวะ! มึงส่งข้อความรัวเกินไปละ กูตอบไม่ทัน ขอพัก 30 วิ (Cooldown)");
+      } catch {
+        eventLogger.warn("Could not send rate limit warning reply");
+      }
+      return;
+    }
+
     // ── Dictation Mode ────────────────────────────────────────────────────
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {
       let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
@@ -117,13 +228,7 @@ export const messageCreateEvent: BotEvent = {
       return;
     }
 
-    // ── Kick Command (ตรวจก่อน AI เสมอ) ─────────────────────────────────
-    try {
-      const wasKick = await handleKickCommand(message);
-      if (wasKick) return; // จัดการแล้ว ไม่ต้องส่งไป AI
-    } catch (error) {
-      handleError(error, "KickCommand");
-    }
+    // เตะปกติถูกย้ายไปรวมใน handleAdminCommands แล้ว
 
     const displayName = message.member?.displayName || message.author.globalName || message.author.username;
     const botId = message.client.user?.id;
@@ -143,8 +248,7 @@ export const messageCreateEvent: BotEvent = {
 
     const botCalledByName = /ไมเคิล|michael|มค|บอท/.test(message.content.toLowerCase());
 
-    // ถ้ามีรูป → ให้บอทอ่านเสมอ
-    const hasImageAttachment = message.attachments.some((a) => a.contentType?.startsWith("image/"));
+    // hasImageAttachment ถูกประกาศไว้ตอนต้นของ execute() แล้ว
 
     const botWasCalled = true; // บังคับให้เป็น true เพื่อให้บอทประมวลผลทุกข้อความตามที่ user ต้องการ
     // ── บอทถูกเรียก → ส่งไป AI ───────────────────────────────────────────
@@ -157,8 +261,7 @@ export const messageCreateEvent: BotEvent = {
       hasImageAttachment,
     });
 
-    // ลบ mention tag ออกจาก content
-    const cleanContent = message.content.replace(/<@!?\d+>/g, "").trim();
+    // cleanContent ถูกประกาศไว้ตอนต้นของ execute() แล้ว
 
     const imageParts: { data: string; mimeType: string }[] = [];
     for (const attachment of message.attachments.values()) {

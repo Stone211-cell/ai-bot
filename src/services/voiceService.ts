@@ -329,11 +329,13 @@ class VoiceService {
       // Resource ถูกสร้างจาก elevenLabsService แล้ว ไม่ต้องสร้างใหม่
       // Cleanup ไฟล์ชั่วคราวเมื่อเล่นจบ
       const cleanup = () => {
-        fs.unlink(tempFilePath, (err) => {
-          if (err && err.code !== "ENOENT") {
-            voiceLogger.error("Failed to delete temp TTS file", { err: err.message });
-          }
-        });
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlink(tempFilePath, (err) => {
+            if (err && err.code !== "ENOENT") {
+              voiceLogger.error("Failed to delete temp TTS file", { err: err.message });
+            }
+          });
+        }
       };
 
       this.player.once(AudioPlayerStatus.Idle, cleanup);

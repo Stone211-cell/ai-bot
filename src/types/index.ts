@@ -44,6 +44,7 @@ export interface ChatCompletionOptions {
   maxTokens?: number;
   temperature?: number;
   contextUsername?: string;
+  contextDiscordId?: string; // รหัส Discord ID ของคนคุยปัจจุบัน
   guildId?: string | null; // ส่งไปให้ AI tools (เช่น kick_member) ใช้งาน
 }
 
