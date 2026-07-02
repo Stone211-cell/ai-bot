@@ -70,7 +70,7 @@ export const interactionCreateEvent: BotEvent = {
           const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งถูกผู้ใช้ชื่อ ${interaction.user.username} เชิญเข้ามาในห้องเสียง
 คำสั่ง: แต่งประโยคทักทายกวนๆ หรือชวนคุย สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
           
-          const geminiService = (await import("../../services/geminiService.js")).geminiService;
+          const geminiService = (await import("../../ai/chat/geminiService.js")).geminiService;
           const { buildMessages } = await import("../../ai/prompt/promptBuilder.js");
           const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
           

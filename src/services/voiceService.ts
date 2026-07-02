@@ -7,6 +7,7 @@ import {
   entersState,
   VoiceConnection,
   StreamType,
+  EndBehaviorType,
 } from "@discordjs/voice";
 import type { VoiceBasedChannel } from "discord.js";
 import { EdgeTTS } from "node-edge-tts";
@@ -138,18 +139,16 @@ class VoiceService {
         },
       });
 
-      const oggStream = new prism.opus.OggLogicalBitstream({
-        opusHead: new prism.opus.OpusHead({
-          channelCount: 2,
-          sampleRate: 48000,
-        }),
-        pageSizeControl: { maxPackets: 10 },
+      const oggEncoder = new prism.opus.Encoder({
+        rate: 48000,
+        channels: 2,
+        frameSize: 960,
       });
 
-      const tempAudioPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.ogg`);
+      const tempAudioPath = path.join(process.cwd(), `user-${userId}-${Date.now()}.pcm`);
       const writeStream = fs.createWriteStream(tempAudioPath);
 
-      opusStream.pipe(oggStream).pipe(writeStream);
+      opusStream.pipe(oggEncoder).pipe(writeStream);
 
       writeStream.on("finish", async () => {
         voiceLogger.debug(`Finished receiving audio from ${userId}, sending to STT...`);
@@ -170,12 +169,11 @@ class VoiceService {
           const result = await chatService.processMessage({
             discordId: userId,
             username: username,
+            discriminator: "0",
+            avatarUrl: null,
             channelId: this.lastTextChannelId || channel.id,
-            text: text,
-            isMentioned: true, // ฟังเสียง ถือว่าเรียกบอทเสมอ
-            isReplyToBot: false,
-            botCalledByName: true,
-            hasImageAttachment: false,
+            guildId: null,
+            content: text,
             imageParts: [],
           });
 
