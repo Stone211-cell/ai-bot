@@ -136,7 +136,10 @@ export async function handleFunctionCall(
     // ── clear_memory ─────────────────────────────────────────────────────────
     case "clear_memory": {
       const { caller_username, password, target_discord_id } = args;
-      if (caller_username !== "bibi.ubu" || contextUser !== "bibi.ubu") {
+      const isCreator = (caller_username === "bibi.ubu" || caller_username === "L_fullultra_HD") 
+        && (contextUser === "bibi.ubu" || contextUser === "L_fullultra_HD");
+      
+      if (!isCreator) {
         return "ERROR: Permission denied. Only bibi.ubu can use this command.";
       }
       if (password !== "19052006") {
@@ -170,8 +173,11 @@ export async function handleFunctionCall(
     case "kick_member": {
       const { caller_username, target_username, reason } = args;
 
-      // Permission check: เฉพาะ bibi.ubu เท่านั้น (ตรวจทั้ง arg และ contextUser จริงจาก Discord)
-      if (caller_username !== "bibi.ubu" || contextUser !== "bibi.ubu") {
+      // Permission check: เฉพาะ bibi.ubu หรือ L_fullultra_HD เท่านั้น
+      const isCreator = (caller_username === "bibi.ubu" || caller_username === "L_fullultra_HD") 
+        && (contextUser === "bibi.ubu" || contextUser === "L_fullultra_HD");
+        
+      if (!isCreator) {
         toolsLogger.warn("Kick denied: not bibi.ubu", { caller_username, contextUser });
         return "ERROR: แกไม่ใช่ bibi.ubu กูไม่เตะให้หรอก";
       }

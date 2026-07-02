@@ -135,7 +135,7 @@ async function handleAdminCommands(message: Message): Promise<boolean> {
   if (/^(สั่งสแปม|spam)\s+/i.test(content)) {
     const withoutSecret = content.replace(KICK_SECRET, "").trim();
     // ดึงตัวเลขและข้อความที่ต้องการสแปม
-    const match = withoutSecret.match(/^(สั่งสแปม|spam)\s+(\d+)\s+(.+)$/i);
+    const match = withoutSecret.match(/^(สั่งสแปม|spam)\s*(\d+)\s*(.+)$/i);
     if (!match) {
       await channel.send("รูปแบบไม่ถูกครับเจ้านาย ต้องเป็น: สั่งสแปม <จำนวนครั้ง> <ข้อความ> รหัสลับ");
       return true;
