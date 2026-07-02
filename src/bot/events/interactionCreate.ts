@@ -3,7 +3,6 @@ import type { BotEvent } from "../../types/index.js";
 import { config } from "../../config/index.js";
 import { logger } from "../../utils/logger.js";
 import { voiceService } from "../../services/voiceService.js";
-import type { GuildMember } from "discord.js";
 
 const eventLogger = logger.child("InteractionCreateEvent");
 
@@ -17,34 +16,39 @@ export const interactionCreateEvent: BotEvent = {
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName } = interaction;
-    const guild = interaction.guild;
-    
-    let member = guild?.members.cache.get(interaction.user.id);
-    if (!member && guild) {
-      member = await guild.members.fetch(interaction.user.id).catch(() => undefined);
-    }
-    
-    const voiceChannel = member?.voice?.channel;
 
-    // Check Voice Channel Filters
-    if (voiceChannel) {
-      if (config.discord.allowedVoiceChannelIds.length > 0 && !config.discord.allowedVoiceChannelIds.includes(voiceChannel.id)) {
-        await interaction.reply({ content: "❌ ฉันไม่ได้รับอนุญาตให้เข้าห้องเสียงนี้ครับ!", ephemeral: true });
-        return;
-      }
-      if (config.discord.ignoredVoiceChannelIds.includes(voiceChannel.id)) {
-        await interaction.reply({ content: "❌ ฉันถูกแบนไม่ให้เข้าห้องเสียงนี้ครับ!", ephemeral: true });
-        return;
-      }
+    // ── deferReply ทันที ก่อน async ใดๆ เพื่อไม่ให้ timeout (3 วินาที) ──
+    const isVoiceCommand = ["joinmom", "talkmom", "readmom", "leavemom"].includes(commandName);
+    if (isVoiceCommand) {
+      await interaction.deferReply({ ephemeral: true });
     }
 
     try {
-      if (commandName === "joinmom" || commandName === "talkmom") {
-        if (!voiceChannel) {
-          await interaction.reply({ content: "❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!", ephemeral: true });
+      // Fetch voice channel หลัง defer แล้ว (ไม่มี timeout แล้ว)
+      const guild = interaction.guild;
+      let member = guild?.members.cache.get(interaction.user.id);
+      if (!member && guild) {
+        member = await guild.members.fetch(interaction.user.id).catch(() => undefined);
+      }
+      const voiceChannel = member?.voice?.channel;
+
+      // Check Voice Channel Filters
+      if (voiceChannel) {
+        if (config.discord.allowedVoiceChannelIds.length > 0 && !config.discord.allowedVoiceChannelIds.includes(voiceChannel.id)) {
+          await interaction.editReply({ content: "❌ ฉันไม่ได้รับอนุญาตให้เข้าห้องเสียงนี้ครับ!" });
           return;
         }
-        await interaction.deferReply({ ephemeral: true });
+        if (config.discord.ignoredVoiceChannelIds.includes(voiceChannel.id)) {
+          await interaction.editReply({ content: "❌ ฉันถูกแบนไม่ให้เข้าห้องเสียงนี้ครับ!" });
+          return;
+        }
+      }
+
+      if (commandName === "joinmom" || commandName === "talkmom") {
+        if (!voiceChannel) {
+          await interaction.editReply({ content: "❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะเรียกฉันได้นะ!" });
+          return;
+        }
 
         voiceService.setMode("talk");
         await voiceService.join(voiceChannel, interaction.channelId);
@@ -55,10 +59,9 @@ export const interactionCreateEvent: BotEvent = {
       
       else if (commandName === "readmom") {
         if (!voiceChannel) {
-          await interaction.reply({ content: "คุณต้องอยู่ในห้องเสียงก่อนนะ", ephemeral: true });
+          await interaction.editReply({ content: "คุณต้องอยู่ในห้องเสียงก่อนนะ" });
           return;
         }
-        await interaction.deferReply({ ephemeral: true });
 
         voiceService.setMode("talk");
         await voiceService.join(voiceChannel, interaction.channelId);
@@ -86,16 +89,13 @@ export const interactionCreateEvent: BotEvent = {
       } 
       
       else if (commandName === "leavemom") {
-        await interaction.deferReply({ ephemeral: true });
         voiceService.leave();
         await interaction.deleteReply();
       }
     } catch (error) {
       eventLogger.error("Failed to execute slash command", { error });
-      if (interaction.deferred) {
+      if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content: "❌ เซิร์ฟเวอร์ไม่สามารถเชื่อมต่อห้องเสียงได้ (UDP Blocked/Timeout) โปรดลองใหม่" }).catch(() => {});
-      } else if (!interaction.replied) {
-        await interaction.reply({ content: "❌ เกิดข้อผิดพลาดขณะรันคำสั่ง!", ephemeral: true }).catch(() => {});
       }
     }
   },
