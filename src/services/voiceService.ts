@@ -149,7 +149,7 @@ class VoiceService {
       const opusStream = receiver.subscribe(userId, {
         end: {
           behavior: EndBehaviorType.AfterSilence,
-          duration: 250, // ลดเหลือ 0.25 วิ เพื่อให้ตอบสนองไวแสง
+          duration: 600, // เพิ่มกลับเป็น 0.6 วินาที เพื่อป้องกันการตัดจบประโยคเร็วเกินไป (ซึ่งทำให้ระบบมองว่าเป็นคำหลอนและปัดทิ้ง)
         },
       });
 

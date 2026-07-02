@@ -38,13 +38,15 @@ export class MessageHandler {
       channelId: ctx.channelId,
     });
 
-    // ถ้าบอทอยู่ในห้องเสียงและเป็นโหมด talk ให้ข้ามการพิมพ์แชทและพิมพ์ indicator ไปเลย
+    // ถ้าบอทอยู่ในห้องเสียงและเป็นโหมด talk ให้ตอบเป็นเสียงเฉพาะเมื่อข้อความมาจากห้องแชทที่ถูกเรียกตอนแรกเท่านั้น
     if (voiceService.isInVoice() && voiceService.getMode() === "talk") {
-      const result = await chatService.processMessage(ctx);
-      if (!result.reply.includes("[IGNORE]")) {
-        voiceService.speak(result.reply);
+      if (ctx.channelId === voiceService.getLastTextChannelId()) {
+        const result = await chatService.processMessage(ctx);
+        if (!result.reply.includes("[IGNORE]")) {
+          voiceService.speak(result.reply);
+        }
+        return; // ไม่ต้องส่งข้อความลงแชท
       }
-      return; // ไม่ต้องส่งข้อความลงแชท
     }
 
     await sendable.sendTyping();

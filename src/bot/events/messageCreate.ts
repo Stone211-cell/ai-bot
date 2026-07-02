@@ -220,12 +220,14 @@ export const messageCreateEvent: BotEvent = {
 
     // ── Dictation Mode ────────────────────────────────────────────────────
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {
-      let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
-      textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
-      if (textToRead) {
-        voiceService.speak(textToRead);
+      if (message.channelId === voiceService.getLastTextChannelId()) {
+        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
+        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
+        if (textToRead) {
+          voiceService.speak(textToRead);
+        }
+        return;
       }
-      return;
     }
 
     // เตะปกติถูกย้ายไปรวมใน handleAdminCommands แล้ว
