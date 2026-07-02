@@ -33,10 +33,30 @@ export class SpeechToTextService {
         language: "th",
         prompt: "Transcribe Thai audio accurately, including slang and informal language.",
         response_format: "json",
+        temperature: 0.0, // ช่วยลดโอกาสการหลอนของโมเดล
       });
 
-      sttLogger.debug(`Transcription result: "${transcription.text}"`);
-      return transcription.text.trim();
+      let text = transcription.text.trim();
+      
+      // กรองคำหลอน (Hallucinations) ของ Whisper ที่เกิดจากเสียงพัดลม/เสียงช็อต
+      const hallucinations = [
+        "ขอบคุณค่ะ", "ขอบคุณครับ", "ขอบคุณที่รับชม", "ขอบคุณที่รับชมค่ะ", "ขอบคุณที่รับชมครับ",
+        "สวัสดีค่ะ", "สวัสดีครับ", "คำบรรยายโดย", "คำบรรยายภาพโดย", "โอเค", "อืม", "อือ", "เอ่อ",
+        "ซับไทยโดย", "amara.org", "subscribe", "รับชม", "ลาก่อน", "ค่ะ", "ครับ"
+      ];
+      
+      const strippedText = text.toLowerCase().replace(/[\s\.\!]/g, "");
+      if (strippedText.length < 2) return "";
+      
+      for (const h of hallucinations) {
+        if (strippedText === h.toLowerCase() || strippedText.includes("ขอบคุณที่รับชม") || strippedText.includes("คำบรรยาย")) {
+          sttLogger.debug(`Dropped Whisper hallucination: "${text}"`);
+          return "";
+        }
+      }
+
+      sttLogger.debug(`Transcription result: "${text}"`);
+      return text;
     } catch (error: any) {
       sttLogger.error("STT transcription failed", { error: error.message });
       return "";

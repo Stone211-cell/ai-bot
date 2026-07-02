@@ -38,6 +38,15 @@ export class MessageHandler {
       channelId: ctx.channelId,
     });
 
+    // ถ้าบอทอยู่ในห้องเสียงและเป็นโหมด talk ให้ข้ามการพิมพ์แชทและพิมพ์ indicator ไปเลย
+    if (voiceService.isInVoice() && voiceService.getMode() === "talk") {
+      const result = await chatService.processMessage(ctx);
+      if (!result.reply.includes("[IGNORE]")) {
+        voiceService.speak(result.reply);
+      }
+      return; // ไม่ต้องส่งข้อความลงแชท
+    }
+
     await sendable.sendTyping();
 
     const result = await chatService.processMessage(ctx);
@@ -45,11 +54,6 @@ export class MessageHandler {
     if (result.reply.includes("[IGNORE]")) {
       handlerLogger.debug("AI decided to ignore the message");
       return;
-    }
-
-    if (voiceService.isInVoice() && voiceService.getMode() === "talk") {
-      voiceService.speak(result.reply);
-      return; // ไม่ต้องส่งข้อความลงแชท
     }
 
     if (result.reply.length <= DISCORD_MAX_LENGTH) {
