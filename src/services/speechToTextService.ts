@@ -5,10 +5,17 @@ import { logger } from "../utils/logger.js";
 const sttLogger = logger.child("SpeechToText");
 
 export class SpeechToTextService {
-  private groq: Groq;
+  private groq: Groq | null = null;
 
-  constructor() {
-    this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  private getClient(): Groq {
+    if (!this.groq) {
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) {
+        throw new Error("GROQ_API_KEY is not set — Speech-to-Text is disabled");
+      }
+      this.groq = new Groq({ apiKey });
+    }
+    return this.groq;
   }
 
   /**
@@ -20,7 +27,7 @@ export class SpeechToTextService {
     try {
       sttLogger.debug(`Transcribing audio file: ${filePath}`);
       
-      const transcription = await this.groq.audio.transcriptions.create({
+      const transcription = await this.getClient().audio.transcriptions.create({
         file: fs.createReadStream(filePath),
         model: "whisper-large-v3",
         language: "th",
@@ -38,3 +45,4 @@ export class SpeechToTextService {
 }
 
 export const speechToTextService = new SpeechToTextService();
+
