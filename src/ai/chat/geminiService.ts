@@ -81,18 +81,32 @@ export class GeminiService implements IGeminiService {
           },
         });
 
-        // Handle function calls
-        if (response.functionCalls && response.functionCalls.length > 0) {
-          const call = response.functionCalls[0];
-          if (!call) throw new Error("Empty function call returned");
-          aiLogger.info("Executing function call", { name: call.name, contextUsername: options.contextUsername });
-          const functionResult = await handleFunctionCall(
-            call.name!, 
-            call.args as Record<string, any>, 
-            options.contextUsername || "unknown",
-            options.guildId ?? null,
-            options.contextDiscordId,
-          );
+        let callCount = 0;
+        while (response.functionCalls && response.functionCalls.length > 0 && callCount < 3) {
+          callCount++;
+          
+          const functionResponses = [];
+          
+          // Execute all function calls in parallel or sequentially
+          for (const call of response.functionCalls) {
+            if (!call || !call.name) continue;
+            aiLogger.info("Executing function call", { name: call.name, contextUsername: options.contextUsername });
+            
+            const functionResult = await handleFunctionCall(
+              call.name, 
+              call.args as Record<string, any>, 
+              options.contextUsername || "unknown",
+              options.guildId ?? null,
+              options.contextDiscordId,
+            );
+            
+            functionResponses.push({
+              functionResponse: {
+                name: call.name,
+                response: { result: functionResult }
+              }
+            });
+          }
 
           // Append to contents and call again
           // ส่งอ็อบเจกต์ Candidates Content ดิบกลับเข้าไปตรงๆ เพื่อรักษา thought_signature ไว้ให้ครบถ้วนตามมาตรฐานใหม่ของ Google
@@ -103,15 +117,16 @@ export class GeminiService implements IGeminiService {
               parts: contentObj.parts as any[],
             });
           } else {
+            // Fallback if content object is missing for some reason
             contents.push({
               role: "model",
-              parts: [{ functionCall: call }],
+              parts: response.functionCalls.map(c => ({ functionCall: c })),
             });
           }
 
           contents.push({
             role: "user",
-            parts: [{ functionResponse: { name: call.name!, response: { result: functionResult } } }],
+            parts: functionResponses,
           });
 
           response = await client.models.generateContent({
@@ -131,7 +146,7 @@ export class GeminiService implements IGeminiService {
           text = response.text || "";
         } catch (e) {
           // Gemini SDK getter for text throws if blocked by safety or no parts exist
-          aiLogger.warn("Gemini text getter threw an error (possibly safety blocked)", { error: e });
+          aiLogger.warn("Gemini text getter threw an error (possibly safety blocked or empty after tool calls)", { error: e });
         }
 
         if (!text) {

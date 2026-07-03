@@ -176,17 +176,29 @@ export const messageCreateEvent: BotEvent = {
 
     // ── Guards ─────────────────────────────────────────────────────────────
     if (message.author.bot) return;
-    if (!message.guild) return;
+    if (!message.guild) {
+      eventLogger.debug(`Ignored message from ${message.author.username}: Not in a guild (DM)`);
+      return;
+    }
 
     // ── Channel filter ────────────────────────────────────────────────────
     if (
       config.discord.allowedTextChannelIds.length > 0 &&
       !config.discord.allowedTextChannelIds.includes(message.channelId)
-    ) return;
+    ) {
+      eventLogger.debug(`Ignored message from ${message.author.username} in channel ${message.channelId}: Channel not in ALLOWED_TEXT_CHANNEL_IDS`);
+      return;
+    }
 
-    if (config.discord.ignoredTextChannelIds.includes(message.channelId)) return;
+    if (config.discord.ignoredTextChannelIds.includes(message.channelId)) {
+      eventLogger.debug(`Ignored message from ${message.author.username} in channel ${message.channelId}: Channel is in IGNORED_TEXT_CHANNEL_IDS`);
+      return;
+    }
 
-    if (!message.content.trim() && message.attachments.size === 0) return;
+    if (!message.content.trim() && message.attachments.size === 0) {
+      eventLogger.debug(`Ignored empty message from ${message.author.username} in channel ${message.channelId}`);
+      return;
+    }
 
     // ── Creator Admin Commands (ตรวจสอบก่อนเสมอและซ่อนข้อความทันที) ────────
     try {

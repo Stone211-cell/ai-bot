@@ -165,7 +165,7 @@ export async function handleFunctionCall(
         return `Search results for "${query}":\n\n${topResults}`;
       } catch (error) {
         toolsLogger.error("Search failed", { error });
-        return "Search failed. Could not retrieve results.";
+        return "Search failed. Do NOT try to search again. Tell the user you cannot search right now and answer using your general knowledge.";
       }
     }
 
