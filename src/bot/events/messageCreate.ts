@@ -196,42 +196,6 @@ export const messageCreateEvent: BotEvent = {
       handleError(error, "AdminCommands");
     }
 
-    // ลบ mention tag ออกจาก content และดูว่ามีรูปไหม
-    const cleanContent = message.content.replace(/<@!?\d+>/g, "").trim();
-    const hasImageAttachment = message.attachments.some((a) => a.contentType?.startsWith("image/"));
-
-    // ── Anti-Spam (Content Filter) ────────────────────────────────────────
-    if (antiSpam.isSpammyContent(cleanContent) && !hasImageAttachment) {
-      eventLogger.debug(`Ignored spammy/meaningless message from ${message.author.username}`);
-      return;
-    }
-
-    // ── Rate Limiting (Cooldown) ──────────────────────────────────────────
-    const rateLimitStatus = antiSpam.checkRateLimit(message.author.id);
-    if (rateLimitStatus === "ignored") return;
-    if (rateLimitStatus === "warn") {
-      try {
-        await message.reply("ใจเย็นๆ สิวะ! มึงส่งข้อความรัวเกินไปละ กูตอบไม่ทัน ขอพัก 30 วิ (Cooldown)");
-      } catch {
-        eventLogger.warn("Could not send rate limit warning reply");
-      }
-      return;
-    }
-
-    // ── Dictation Mode ────────────────────────────────────────────────────
-    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
-      if (message.channelId === voiceService.getLastTextChannelId()) {
-        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
-        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
-        if (textToRead) {
-          voiceService.speak(textToRead);
-        }
-        return;
-      }
-    }
-
-    // เตะปกติถูกย้ายไปรวมใน handleAdminCommands แล้ว
-
     const displayName = message.member?.displayName || message.author.globalName || message.author.username;
     const botId = message.client.user?.id;
 
@@ -249,6 +213,49 @@ export const messageCreateEvent: BotEvent = {
     }
 
     const botCalledByName = /ไมเคิล|michael|มค|บอท/.test(message.content.toLowerCase());
+
+    // ลบ mention tag ออกจาก content และดูว่ามีรูปไหม
+    const cleanContent = message.content.replace(/<@!?\d+>/g, "").trim();
+    const hasImageAttachment = message.attachments.some((a) => a.contentType?.startsWith("image/"));
+
+    // ถ้าโดนแท็ก (Mention) หรือตอบกลับบอท (Reply) ถือเป็นการเรียกตรง
+    const isDirectCall = isMentioned || isReplyToBot;
+
+    // ── Anti-Spam (Content Filter) ────────────────────────────────────────
+    // ถ้าเป็นการเรียกตรง หรือมีรูปภาพ ไม่ต้องเช็คสแปม
+    if (!isDirectCall && antiSpam.isSpammyContent(cleanContent) && !hasImageAttachment) {
+      eventLogger.debug(`Ignored spammy/meaningless message from ${message.author.username}`);
+      return;
+    }
+
+    // ── Rate Limiting (Cooldown) ──────────────────────────────────────────
+    // ถ้าเป็นการเรียกตรง จะข้ามระบบคูลดาวน์ เพื่อรับประกันว่าบอทต้องตอบกลับผู้ใช้แน่นอน
+    if (!isDirectCall) {
+      const rateLimitStatus = antiSpam.checkRateLimit(message.author.id);
+      if (rateLimitStatus === "ignored") return;
+      if (rateLimitStatus === "warn") {
+        try {
+          await message.reply("ใจเย็นๆ สิวะ! มึงส่งข้อความรัวเกินไปละ กูตอบไม่ทัน ขอพัก 30 วิ (Cooldown)");
+        } catch {
+          eventLogger.warn("Could not send rate limit warning reply");
+        }
+        return;
+      }
+    }
+
+    // ── Dictation Mode ────────────────────────────────────────────────────
+    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
+      if (message.channelId === voiceService.getLastTextChannelId()) {
+        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
+        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
+        if (textToRead) {
+          voiceService.speak(textToRead);
+        }
+        return;
+      }
+    }
+
+    // เตะปกติถูกย้ายไปรวมใน handleAdminCommands แล้ว
 
     // hasImageAttachment ถูกประกาศไว้ตอนต้นของ execute() แล้ว
 
