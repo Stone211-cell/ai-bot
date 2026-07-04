@@ -182,14 +182,19 @@ export const messageCreateEvent: BotEvent = {
     }
 
     // ── Dictation Mode ────────────────────────────────────────────────────
-    // รันก่อน Channel Filter เพราะเราต้องการให้อ่านจากช่องที่เรียกคำสั่ง แม้ช่องนั้นจะไม่อยู่ใน ALLOWED_TEXT_CHANNEL_IDS
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {
-      if (message.channelId === voiceService.getLastTextChannelId()) {
+      // อ่านข้อความถ้ามาจากห้องที่เรียกคำสั่ง หรือห้องที่อยู่ใน ALLOWED_TEXT_CHANNEL_IDS
+      const isAllowedChannel = config.discord.allowedTextChannelIds.length === 0 || config.discord.allowedTextChannelIds.includes(message.channelId);
+      if (message.channelId === voiceService.getLastTextChannelId() || isAllowedChannel) {
         let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
         textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
+        
+        // ถ้าข้อความว่างเปล่า อาจเกิดจากไม่ได้เปิด Message Content Intent
         if (textToRead) {
           const displayName = message.member?.displayName || message.author.globalName || message.author.username;
           voiceService.speak(`${displayName} บอกว่า ${textToRead}`);
+        } else if (message.attachments.size === 0) {
+          eventLogger.warn("Received empty message content. Message Content Intent might be disabled in Discord Developer Portal!");
         }
         return;
       }
