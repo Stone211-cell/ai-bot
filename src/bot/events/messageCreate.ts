@@ -209,6 +209,19 @@ export const messageCreateEvent: BotEvent = {
     }
 
     const displayName = message.member?.displayName || message.author.globalName || message.author.username;
+
+    // ── Dictation Mode ────────────────────────────────────────────────────
+    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
+      if (message.channelId === voiceService.getLastTextChannelId()) {
+        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
+        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
+        if (textToRead) {
+          voiceService.speak(`${displayName} บอกว่า ${textToRead}`);
+        }
+        return;
+      }
+    }
+
     const botId = message.client.user?.id;
 
     // ── ตรวจว่าบอทถูกเรียกหรือเปล่า ─────────────────────────────────────
@@ -255,17 +268,7 @@ export const messageCreateEvent: BotEvent = {
       }
     }
 
-    // ── Dictation Mode ────────────────────────────────────────────────────
-    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
-      if (message.channelId === voiceService.getLastTextChannelId()) {
-        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
-        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
-        if (textToRead) {
-          voiceService.speak(textToRead);
-        }
-        return;
-      }
-    }
+
 
     // เตะปกติถูกย้ายไปรวมใน handleAdminCommands แล้ว
 

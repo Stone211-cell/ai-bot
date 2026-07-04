@@ -20,22 +20,22 @@ export const readyEvent: BotEvent = {
     const commands: ApplicationCommandDataResolvable[] = [
       {
         name: "joinmom",
-        description: "เรียกบอทเข้าห้องเสียงเพื่อพูดคุยตอบโต้แบบ AI (โทนี่ สตาร์ค)",
+        description: "-",
         type: ApplicationCommandType.ChatInput,
       },
       {
         name: "talkmom",
-        description: "เรียกบอทเข้าห้องเสียงเพื่อพูดคุยตอบโต้แบบ AI (โทนี่ สตาร์ค)",
+        description: "-",
         type: ApplicationCommandType.ChatInput,
       },
       {
         name: "readmom",
-        description: "เรียกบอทเข้าห้องเสียงเพื่ออ่านแชทแทนคนไม่มีไมค์ (ไม่ตอบโต้)",
+        description: "-",
         type: ApplicationCommandType.ChatInput,
       },
       {
         name: "leavemom",
-        description: "สั่งให้บอทออกจากห้องเสียง",
+        description: "-",
         type: ApplicationCommandType.ChatInput,
       },
     ];

@@ -5,16 +5,16 @@ import { logger } from "../utils/logger.js";
 const commands = [
   new SlashCommandBuilder()
     .setName("joinmom")
-    .setDescription("เรียกบอทเข้าห้องเสียงเพื่อพูดคุย"),
+    .setDescription("-"),
   new SlashCommandBuilder()
     .setName("talkmom")
-    .setDescription("เรียกบอทเข้าห้องเสียงเพื่อพูดคุย"),
+    .setDescription("-"),
   new SlashCommandBuilder()
     .setName("readmom")
-    .setDescription("โหมดอ่านแชท"),
+    .setDescription("-"),
   new SlashCommandBuilder()
     .setName("leavemom")
-    .setDescription("เตะบอทออก"),
+    .setDescription("-"),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(config.discord.token);
