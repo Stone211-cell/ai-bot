@@ -191,8 +191,7 @@ export const messageCreateEvent: BotEvent = {
         
         // ถ้าข้อความว่างเปล่า อาจเกิดจากไม่ได้เปิด Message Content Intent
         if (textToRead) {
-          const displayName = message.member?.displayName || message.author.globalName || message.author.username;
-          voiceService.speak(`${displayName} บอกว่า ${textToRead}`);
+          voiceService.speak(textToRead);
         } else if (message.attachments.size === 0) {
           eventLogger.warn("Received empty message content. Message Content Intent might be disabled in Discord Developer Portal!");
         }
