@@ -181,6 +181,20 @@ export const messageCreateEvent: BotEvent = {
       return;
     }
 
+    // ── Dictation Mode ────────────────────────────────────────────────────
+    // รันก่อน Channel Filter เพราะเราต้องการให้อ่านจากช่องที่เรียกคำสั่ง แม้ช่องนั้นจะไม่อยู่ใน ALLOWED_TEXT_CHANNEL_IDS
+    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
+      if (message.channelId === voiceService.getLastTextChannelId()) {
+        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
+        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
+        if (textToRead) {
+          const displayName = message.member?.displayName || message.author.globalName || message.author.username;
+          voiceService.speak(`${displayName} บอกว่า ${textToRead}`);
+        }
+        return;
+      }
+    }
+
     // ── Channel filter ────────────────────────────────────────────────────
     if (
       config.discord.allowedTextChannelIds.length > 0 &&
@@ -209,18 +223,6 @@ export const messageCreateEvent: BotEvent = {
     }
 
     const displayName = message.member?.displayName || message.author.globalName || message.author.username;
-
-    // ── Dictation Mode ────────────────────────────────────────────────────
-    if (voiceService.isInVoice() && voiceService.getMode() === "read") {
-      if (message.channelId === voiceService.getLastTextChannelId()) {
-        let textToRead = message.content.replace(/https?:\/\/\S+/g, "").trim();
-        textToRead = textToRead.replace(/<a?:\w+:\d+>/g, "").trim();
-        if (textToRead) {
-          voiceService.speak(`${displayName} บอกว่า ${textToRead}`);
-        }
-        return;
-      }
-    }
 
     const botId = message.client.user?.id;
 
