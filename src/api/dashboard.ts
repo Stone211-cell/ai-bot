@@ -64,15 +64,18 @@ dashboardRouter.get("/guilds", (req, res) => {
 dashboardRouter.get("/channels/:guildId", async (req, res) => {
   try {
     const client = getClient();
-    const guild = client.guilds.cache.get(req.params.guildId);
+    const guild = await client.guilds.fetch(req.params.guildId);
     if (!guild) return res.status(404).json({ error: "Guild not found" });
 
-    const channels = guild.channels.cache
-      .filter(c => c.isTextBased() || c.isVoiceBased())
+    // Ensure channels are fetched
+    const fetchedChannels = await guild.channels.fetch();
+
+    const channels = fetchedChannels
+      .filter(c => c !== null && (c.isTextBased() || c.isVoiceBased()))
       .map(c => ({
-        id: c.id,
-        name: c.name,
-        type: c.isTextBased() ? 'text' : 'voice'
+        id: c!.id,
+        name: c!.name,
+        type: c!.isTextBased() ? 'text' : 'voice'
       }));
     res.json({ channels });
   } catch (error) {
