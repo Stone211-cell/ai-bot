@@ -69,10 +69,15 @@ async function fetchAPI(endpoint, options = {}) {
     if (!options.headers) options.headers = {};
     options.headers['x-password'] = password;
     
-    const res = await fetch(`${API_BASE}${endpoint}`, options);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'API Error');
-    return data;
+    try {
+        const res = await fetch(`${API_BASE}${endpoint}`, options);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'API Error');
+        return data;
+    } catch (err) {
+        console.error(`fetchAPI Error [${endpoint}]:`, err);
+        throw err;
+    }
 }
 
 // --- Auth ---
@@ -109,14 +114,18 @@ guildSelector.addEventListener('change', async (e) => {
     if (currentGuild) {
         channelSelector.disabled = false;
         voiceChannelSelector.disabled = false;
-        const { channels } = await fetchAPI(`/channels/${currentGuild}`);
-        
-        channels.filter(c => c.type === 'text').forEach(c => {
-            channelSelector.innerHTML += `<option value="${c.id}"># ${c.name}</option>`;
-        });
-        channels.filter(c => c.type === 'voice').forEach(c => {
-            voiceChannelSelector.innerHTML += `<option value="${c.id}">🔊 ${c.name}</option>`;
-        });
+        try {
+            const { channels } = await fetchAPI(`/channels/${currentGuild}`);
+            
+            channels.filter(c => c.type === 'text').forEach(c => {
+                channelSelector.innerHTML += `<option value="${c.id}"># ${c.name}</option>`;
+            });
+            channels.filter(c => c.type === 'voice').forEach(c => {
+                voiceChannelSelector.innerHTML += `<option value="${c.id}">🔊 ${c.name}</option>`;
+            });
+        } catch (err) {
+            alert("โหลดห้องแชทไม่สำเร็จ: " + err.message);
+        }
 
         // Load members for kick
         try {
