@@ -15,11 +15,6 @@ export const interactionCreateEvent: BotEvent = {
 
     if (!interaction.isChatInputCommand()) return;
 
-    if ((global as any).disguiseMode) {
-      await interaction.reply({ content: "🤫 ระบบถูกปิด (โหมดปลอมตัวกำลังทำงาน)", ephemeral: true });
-      return;
-    }
-
     const { commandName } = interaction;
 
     // ── deferReply ทันที ก่อน async ใดๆ เพื่อไม่ให้ timeout (3 วินาที) ──
@@ -73,23 +68,27 @@ export const interactionCreateEvent: BotEvent = {
 
         await interaction.deleteReply();
         
-        // ให้ AI สุ่มประโยคทักทายตอนถูกเชิญเข้าห้อง
-        try {
-          const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งถูกผู้ใช้ชื่อ ${interaction.user.username} เชิญเข้ามาในห้องเสียง
-คำสั่ง: แต่งประโยคทักทายกวนๆ หรือชวนคุย สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
-          
-          const geminiService = (await import("../../ai/chat/geminiService.js")).geminiService;
-          const { buildMessages } = await import("../../ai/prompt/promptBuilder.js");
-          const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
-          
-          const completion = await geminiService.chat({
-            messages,
-            contextUsername: "System"
-          });
-          
-          voiceService.speak(completion.content);
-        } catch (err) {
-          voiceService.speak("มาแล้ววัยรุ่น มีไรให้รับใช้");
+        // ให้ AI สุ่มประโยคทักทายตอนถูกเชิญเข้าห้อง (ถ้าเปิดโหมดปลอมตัว ให้พูดแบบธรรมดาไปเลย ไม่ผ่าน AI)
+        if ((global as any).disguiseMode) {
+          voiceService.speak("มาแล้ววัยรุ่น");
+        } else {
+          try {
+            const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งถูกผู้ใช้ชื่อ ${interaction.user.username} เชิญเข้ามาในห้องเสียง
+  คำสั่ง: แต่งประโยคทักทายกวนๆ หรือชวนคุย สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
+            
+            const geminiService = (await import("../../ai/chat/geminiService.js")).geminiService;
+            const { buildMessages } = await import("../../ai/prompt/promptBuilder.js");
+            const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
+            
+            const completion = await geminiService.chat({
+              messages,
+              contextUsername: "System"
+            });
+            
+            voiceService.speak(completion.content);
+          } catch (err) {
+            voiceService.speak("มาแล้ววัยรุ่น มีไรให้รับใช้");
+          }
         }
       } 
       

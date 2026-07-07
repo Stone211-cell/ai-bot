@@ -19,8 +19,6 @@ export const voiceStateUpdateEvent: BotEvent = {
     const botId = oldState.client.user?.id;
     if (!botId) return;
 
-    if ((global as any).disguiseMode) return;
-
     const botVoiceChannel = oldState.guild.members.cache.get(botId)?.voice.channel;
 
     // ── 1. Auto-Leave Logic ────────────────────────────────────────────────
@@ -77,20 +75,24 @@ export const voiceStateUpdateEvent: BotEvent = {
           // await เพราะ join() เป็น async — รอให้ connection Ready ก่อน
           await voiceService.join(newState.channel!, newState.channelId);
 
-          // Generate random greeting
-          const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งสุ่มกระโดดเข้ามาในห้องเสียง Discord โดยไม่ถูกเชิญ
-คำสั่ง: แต่งประโยคทักทายกวนๆ สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น เช่น "มึงกินข้าวยัง", "เบื่อเลยมาหา", "โลนลีเลยโผล่มา" ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
+          if ((global as any).disguiseMode) {
+             // ถ้าเปิดโหมดปลอมตัว ให้บอทเข้ามาเงียบๆ ไม่ต้องพูดทักทาย
+             eventLogger.info("Bot joined silently due to disguise mode");
+          } else {
+            // Generate random greeting
+            const prompt = `นายคือวัยรุ่นกวนๆ ชื่อไมเคิล เพิ่งสุ่มกระโดดเข้ามาในห้องเสียง Discord โดยไม่ถูกเชิญ
+  คำสั่ง: แต่งประโยคทักทายกวนๆ สั้นมาก 1 ประโยค ใช้ภาษาวัยรุ่น เช่น "มึงกินข้าวยัง", "เบื่อเลยมาหา", "โลนลีเลยโผล่มา" ห้ามเป็นทางการ ห้ามใช้ดอกจัน ห้ามยาวเกิน 1 บรรทัด`;
 
-          const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
+            const messages = buildMessages(prompt, [], "ทักทายหน่อย", "System");
 
-          const completion = await geminiService.chat({
-            messages,
-            contextUsername: "System"
-          });
+            const completion = await geminiService.chat({
+              messages,
+              contextUsername: "System"
+            });
 
-          // connection พร้อมแล้ว (join() รอไว้แล้ว) พูดได้เลย
-          voiceService.speak(completion.content);
-
+            // connection พร้อมแล้ว (join() รอไว้แล้ว) พูดได้เลย
+            voiceService.speak(completion.content);
+          }
         } catch (error) {
           eventLogger.error("Failed to execute Random Auto-Join", { error });
         }
