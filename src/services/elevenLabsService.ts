@@ -4,7 +4,6 @@ import { EdgeTTS } from "node-edge-tts";
 import * as fs from "fs";
 import * as path from "path";
 import { createAudioResource, AudioResource, StreamType } from "@discordjs/voice";
-import { AttachmentBuilder } from "discord.js";
 
 const elevenLogger = logger.child("ElevenLabs");
 
@@ -131,47 +130,6 @@ export class ElevenLabsService {
     return createAudioResource(fs.createReadStream(tempFilePath), {
       inputType: StreamType.WebmOpus,
     });
-  }
-
-  /**
-   * สร้างไฟล์เสียงเพื่อส่งเป็นไฟล์แนบ (Attachment) ในช่องแชท
-   */
-  public async generateTTSAttachment(text: string): Promise<AttachmentBuilder | null> {
-    try {
-      const voice = process.env.EDGETTS_VOICE || "th-TH-NiwatNeural";
-      const tts = new EdgeTTS({
-        voice: voice,
-        lang: "th-TH",
-        outputFormat: "audio-24khz-48kbitrate-mono-mp3", // Format สำหรับ MP3 ธรรมดา
-      });
-
-      const tempFilePath = path.join(process.cwd(), `tts-reply-${Date.now()}.mp3`);
-      
-      // ทำความสะอาดข้อความ (ตัด markdown และ URL ออกเหมือนตอนพูด)
-      let cleanText = text
-        .replace(/https?:\/\/\S+/g, "")
-        .replace(/<a?:\w+:\d+>/g, "")
-        .replace(/[*_~`>#]/g, "")
-        .replace(/\[IGNORE\]/gi, "")
-        .trim();
-
-      if (!cleanText) return null;
-
-      // จำกัดความยาวกันโดนแบน หรือไฟล์ใหญ่เกิน
-      cleanText = cleanText.substring(0, 1500);
-
-      await tts.ttsPromise(cleanText, tempFilePath);
-      
-      if (!fs.existsSync(tempFilePath)) return null;
-
-      const buffer = fs.readFileSync(tempFilePath);
-      fs.unlink(tempFilePath, () => {}); // ลบทันทีหลังจากอ่านเข้า buffer
-
-      return new AttachmentBuilder(buffer, { name: "voice-message.mp3" });
-    } catch (e) {
-      elevenLogger.error("Failed to generate TTS attachment", { error: e });
-      return null;
-    }
   }
 }
 
