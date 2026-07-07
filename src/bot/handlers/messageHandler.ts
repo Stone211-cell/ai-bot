@@ -4,12 +4,13 @@ import { chatService } from "../../services/chatService.js";
 import type { DiscordMessageContext } from "../../types/index.js";
 import { logger } from "../../utils/logger.js";
 import { voiceService } from "../../services/voiceService.js";
+import { elevenLabsService } from "../../services/elevenLabsService.js";
 
 const handlerLogger = logger.child("MessageHandler");
 
 interface SendableChannel {
   sendTyping(): Promise<void>;
-  send(content: string): Promise<unknown>;
+  send(options: string | { content?: string; files?: any[] }): Promise<unknown>;
 }
 
 function asSendable(channel: TextBasedChannel): SendableChannel | null {
@@ -58,11 +59,22 @@ export class MessageHandler {
       return;
     }
 
+    // สร้างไฟล์เสียงจากข้อความตอบกลับ
+    const voiceAttachment = await elevenLabsService.generateTTSAttachment(result.reply);
+
     if (result.reply.length <= DISCORD_MAX_LENGTH) {
-      await sendable.send(result.reply);
+      const messagePayload: any = { content: result.reply };
+      if (voiceAttachment) messagePayload.files = [voiceAttachment];
+      await sendable.send(messagePayload);
     } else {
-      for (const chunk of this.chunkMessage(result.reply, DISCORD_MAX_LENGTH)) {
-        await sendable.send(chunk);
+      const chunks = this.chunkMessage(result.reply, DISCORD_MAX_LENGTH);
+      for (let i = 0; i < chunks.length; i++) {
+        const messagePayload: any = { content: chunks[i] };
+        // แนบไฟล์เสียงไปกับข้อความก้อนสุดท้าย
+        if (i === chunks.length - 1 && voiceAttachment) {
+          messagePayload.files = [voiceAttachment];
+        }
+        await sendable.send(messagePayload);
       }
     }
 
