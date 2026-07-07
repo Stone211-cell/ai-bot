@@ -15,6 +15,9 @@ import { logger } from "./utils/logger.js";
 import express from "express";
 import dns from "dns";
 import { generateDependencyReport } from "@discordjs/voice";
+import { dashboardRouter } from "./api/dashboard.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // แก้ปัญหา Discord Voice (UDP Timeout) ที่เกิดจาก Node.js พยายามใช้ IPv6 
 dns.setDefaultResultOrder('ipv4first');
@@ -32,8 +35,18 @@ async function main(): Promise<void> {
   const app = express();
   const port = process.env.PORT || 3000;
   
+  // ให้ Express รองรับ JSON
+  app.use(express.json());
+
+  // เสิร์ฟโฟลเดอร์หน้าเว็บ (Frontend)
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  app.use(express.static(path.join(__dirname, "../public")));
+
+  // นำเข้า API ของ Dashboard
+  app.use("/api", dashboardRouter);
+  
   app.get("/", (req, res) => {
-    res.send("Bot is running 24/7!");
+    res.sendFile(path.join(__dirname, "../public/index.html"));
   });
 
   app.listen(port, () => {

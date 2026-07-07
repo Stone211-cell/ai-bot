@@ -181,6 +181,12 @@ export const messageCreateEvent: BotEvent = {
       return;
     }
 
+    // ── Disguise Mode Check ───────────────────────────────────────────────
+    // ถ้าผู้ใช้เปิดโหมดปลอมตัวบนหน้าเว็บ ให้หยุดการทำงาน AI ทั้งหมด
+    if ((global as any).disguiseMode) {
+      return;
+    }
+
     // ── Dictation Mode ────────────────────────────────────────────────────
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {
       // อ่านข้อความถ้ามาจากห้องที่เรียกคำสั่ง หรือห้องที่อยู่ใน ALLOWED_TEXT_CHANNEL_IDS

@@ -393,7 +393,43 @@ class VoiceService {
       voiceLogger.debug(`TTS generating for: "${text.substring(0, 50)}"`);
 
       const { elevenLabsService } = await import("./elevenLabsService.js");
-      const resource = await elevenLabsService.generateAudio(text, tempFilePath);
+      let resource = await elevenLabsService.generateAudio(text, tempFilePath);
+
+      // --- Villain Mode TTS Pitch Shift ---
+      if ((global as any).villainMode) {
+        // ถ้าเป็น stream จาก ElevenLabs (ไม่มี tempFilePath) ต้องเซฟก่อนดัดเสียง
+        // แต่เพื่อความง่าย เราจะตรวจสอบว่า tempFilePath มีไหม ถ้าไม่มีคือใช้ EdgeTTS แน่ๆ 
+        // งั้นดัดเสียงเฉพาะเมื่อมี tempFilePath
+        if (!fs.existsSync(tempFilePath)) {
+          // ถ้าไม่มีไฟล์ ลองเรียก EdgeTTS โดยตรงเพื่อบังคับให้มีไฟล์
+          const { EdgeTTS } = await import("node-edge-tts");
+          const tts = new EdgeTTS({ voice: "th-TH-NiwatNeural", lang: "th-TH", outputFormat: "webm-24khz-16bit-mono-opus" });
+          await tts.ttsPromise(text, tempFilePath);
+        }
+        
+        if (fs.existsSync(tempFilePath)) {
+          const pitchedPath = tempFilePath.replace(".webm", "_pitched.webm");
+          const { execFile } = await import("child_process");
+          const { default: ffmpegPath } = await import("ffmpeg-static");
+          const ffmpegBinary = process.env.FFMPEG_PATH || ffmpegPath || "ffmpeg";
+          
+          await new Promise<void>((resolve, reject) => {
+            const args = ["-y", "-i", tempFilePath, "-af", "asetrate=48000*0.6,atempo=1/0.6", pitchedPath];
+            execFile(ffmpegBinary, args, (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+
+          // สลับไฟล์ไปใช้ไฟล์ที่ดัดเสียงแล้ว
+          fs.unlink(tempFilePath, () => {});
+          fs.renameSync(pitchedPath, tempFilePath);
+          
+          const { createAudioResource, StreamType } = await import("@discordjs/voice");
+          resource = createAudioResource(fs.createReadStream(tempFilePath), { inputType: StreamType.WebmOpus });
+        }
+      }
+      // ------------------------------------
 
       // ตรวจว่าไฟล์ถูกสร้างและมีข้อมูล (เฉพาะเมื่อมีการบันทึกไฟล์ลงดิสก์ เช่น EdgeTTS)
       if (fs.existsSync(tempFilePath)) {
@@ -406,7 +442,7 @@ class VoiceService {
         voiceLogger.debug("TTS resource streamed directly (no temp file)");
       }
 
-      // Resource ถูกสร้างจาก elevenLabsService แล้ว ไม่ต้องสร้างใหม่
+      // Resource ถูกสร้างจาก elevenLabsService หรือดัดเสียงแล้ว
       // Cleanup ไฟล์ชั่วคราวเมื่อเล่นจบ
       const cleanup = () => {
         if (fs.existsSync(tempFilePath)) {

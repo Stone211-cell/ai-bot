@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord AI Bot - Control Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen">
+        <div class="glass-panel login-box">
+            <h2><i class="fa-solid fa-robot"></i> Bot Dashboard</h2>
+            <p>กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+            <input type="password" id="password-input" placeholder="Password...">
+            <button id="login-btn">เข้าสู่ระบบ</button>
+            <p id="login-error" class="error-text hidden">รหัสผ่านไม่ถูกต้อง</p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-screen" class="screen hidden">
+        
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <i class="fa-solid fa-ghost"></i> Bot Control
+            </div>
+            
+            <div class="selector-group">
+                <label>เซิร์ฟเวอร์ (Guild)</label>
+                <select id="guild-selector">
+                    <option value="">-- เลือกเซิร์ฟเวอร์ --</option>
+                </select>
+            </div>
+
+            <div class="selector-group">
+                <label>ห้องแชท (Text Channel)</label>
+                <select id="channel-selector" disabled>
+                    <option value="">-- เลือกห้องแชท --</option>
+                </select>
+            </div>
+
+            <hr class="divider">
+
+            <div class="voice-controls mt-3">
+                <h3><i class="fa-solid fa-microphone-lines"></i> ระบบเสียง (Voice)</h3>
+                <div class="selector-group">
+                    <select id="voice-channel-selector" disabled>
+                        <option value="">-- เลือกห้องเสียง --</option>
+                    </select>
+                </div>
+                <div class="voice-buttons">
+                    <button id="join-voice-btn" class="btn btn-outline" disabled>เข้าห้องเสียง</button>
+                    <button id="leave-voice-btn" class="btn btn-danger hidden">ออกห้อง</button>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="troll-panel">
+                <h3 class="danger-text"><i class="fa-solid fa-skull"></i> Troll Panel</h3>
+                
+                <div class="switch-group">
+                    <label class="switch">
+                        <input type="checkbox" id="disguise-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="switch-label">🕵️ โหมดปลอมตัว (ปิด AI)</span>
+                </div>
+
+                <div class="switch-group">
+                    <label class="switch">
+                        <input type="checkbox" id="villain-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="switch-label">👹 เสียงตัวร้าย</span>
+                </div>
+
+                <div class="switch-group">
+                    <label class="switch">
+                        <input type="checkbox" id="typing-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="switch-label">⌨️ สถานะ "กำลังพิมพ์"</span>
+                </div>
+
+                <div class="troll-actions mt-3">
+                    <label>สแปมข้อความ</label>
+                    <div class="input-with-btn mb-2">
+                        <input type="number" id="spam-count" placeholder="ครั้ง" min="1" max="100" style="width: 70px;">
+                        <input type="text" id="spam-input" placeholder="ข้อความ...">
+                    </div>
+                    <div class="voice-buttons">
+                        <button id="spam-start-btn" class="btn btn-danger" disabled>เริ่มสแปม</button>
+                        <button id="spam-stop-btn" class="btn btn-outline hidden">หยุด!</button>
+                    </div>
+
+                    <label class="mt-3">ประกาศยึดครองโลก</label>
+                    <button id="takeover-btn" class="btn btn-danger pulse-btn">🚨 ระบบยึดครองโลก</button>
+
+                    <label class="mt-3">เตะสมาชิก</label>
+                    <div class="input-with-btn">
+                        <select id="kick-selector" disabled>
+                            <option value="">-- เลือกเหยื่อ --</option>
+                        </select>
+                        <button id="kick-btn" class="btn btn-danger" disabled>เตะ</button>
+                    </div>
+
+                    <button id="delete-channel-btn" class="btn btn-danger mt-3" disabled><i class="fa-solid fa-bomb"></i> ระเบิดห้องทิ้ง</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area glass-panel">
+            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="current-channel-name"># เลือกห้องแชท</h3>
+                <div class="voice-status" id="voice-status-indicator">
+                    <span class="status-dot"></span> <span id="voice-status-text">ไม่ได้อยู่ในห้องเสียง</span>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="empty-state">
+                    <i class="fa-regular fa-comments"></i>
+                    <p>เลือกห้องแชทเพื่อดูข้อความ</p>
+                </div>
+            </div>
+
+            <div id="replying-to-bar" class="hidden">
+                <div class="reply-info">
+                    <span>กำลังตอบกลับ: </span>
+                    <span id="reply-to-text" class="text-truncate">...</span>
+                </div>
+                <button id="cancel-reply-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="attachment-preview-bar" class="hidden">
+                <div class="attachment-info">
+                    <i class="fa-solid fa-image"></i>
+                    <span id="attachment-name">image.png</span>
+                </div>
+                <button id="cancel-attachment-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="audio-preview-bar" class="hidden">
+                <audio id="audio-player" controls></audio>
+                <div class="audio-controls">
+                    <button id="send-audio-msg-btn" class="btn btn-primary">ส่งเข้าแชท</button>
+                    <button id="cancel-audio-btn" class="btn btn-danger">ยกเลิก</button>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <input type="file" id="file-input" class="hidden" accept="image/*,video/*,audio/*">
+                
+                <div class="input-tools">
+                    <button id="attach-btn" class="btn-icon" title="แนบไฟล์"><i class="fa-solid fa-paperclip"></i></button>
+                    <button id="record-chat-btn" class="btn-icon danger-icon" title="อัดเสียง"><i class="fa-solid fa-microphone"></i></button>
+                </div>
+                
+                <textarea id="message-input" placeholder="ส่งข้อความ... (Shift+Enter เพื่อส่ง)" disabled rows="1"></textarea>
+                
+                <button id="send-btn" class="btn-icon primary" disabled><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
