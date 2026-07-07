@@ -15,6 +15,11 @@ export const interactionCreateEvent: BotEvent = {
 
     if (!interaction.isChatInputCommand()) return;
 
+    if ((global as any).disguiseMode) {
+      await interaction.reply({ content: "🤫 ระบบถูกปิด (โหมดปลอมตัวกำลังทำงาน)", ephemeral: true });
+      return;
+    }
+
     const { commandName } = interaction;
 
     // ── deferReply ทันที ก่อน async ใดๆ เพื่อไม่ให้ timeout (3 วินาที) ──

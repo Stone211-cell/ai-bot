@@ -19,6 +19,8 @@ export const voiceStateUpdateEvent: BotEvent = {
     const botId = oldState.client.user?.id;
     if (!botId) return;
 
+    if ((global as any).disguiseMode) return;
+
     const botVoiceChannel = oldState.guild.members.cache.get(botId)?.voice.channel;
 
     // ── 1. Auto-Leave Logic ────────────────────────────────────────────────
