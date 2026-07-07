@@ -15,9 +15,6 @@ const commands = [
   new SlashCommandBuilder()
     .setName("leavemom")
     .setDescription("-"),
-  new SlashCommandBuilder()
-    .setName("echomom")
-    .setDescription("เข้าโหมดเครื่องแปลงเสียง (พูดแล้วบอทพูดตาม)"),
 ].map((command) => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(config.discord.token);

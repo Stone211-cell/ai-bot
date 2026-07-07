@@ -16,6 +16,7 @@ import path from "path";
 import fs from "fs";
 import { exec } from "child_process";
 import ffmpegStatic from "ffmpeg-static";
+import { voiceService } from "../services/voiceService.js";
 
 export const dashboardRouter = Router();
 
@@ -284,10 +285,18 @@ dashboardRouter.post("/voice/speak", async (req, res) => {
 // 3. TROLL PANEL API
 // ==========================================
 dashboardRouter.post("/troll/state", (req, res) => {
-  const { disguiseMode, villainMode } = req.body;
+  const { disguiseMode, villainMode, echoMode } = req.body;
   if (typeof disguiseMode === 'boolean') (global as any).disguiseMode = disguiseMode;
   if (typeof villainMode === 'boolean') (global as any).villainMode = villainMode;
-  res.json({ success: true, disguiseMode: (global as any).disguiseMode, villainMode: (global as any).villainMode });
+  if (typeof echoMode === 'boolean') {
+    (global as any).echoMode = echoMode;
+    if (echoMode && voiceService.getMode() !== "echo") {
+      voiceService.setMode("echo");
+    } else if (!echoMode && voiceService.getMode() === "echo") {
+      voiceService.setMode("talk");
+    }
+  }
+  res.json({ success: true, disguiseMode: (global as any).disguiseMode, villainMode: (global as any).villainMode, echoMode: (global as any).echoMode });
 });
 
 dashboardRouter.post("/troll/typing", async (req, res) => {

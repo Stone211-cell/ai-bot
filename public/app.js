@@ -43,6 +43,7 @@ const ttsSendBtn = document.getElementById('tts-send-btn');
 // Troll Panel Elements
 const disguiseToggle = document.getElementById('disguise-mode-toggle');
 const villainToggle = document.getElementById('villain-mode-toggle');
+const echoToggle = document.getElementById('echo-mode-toggle');
 const typingToggle = document.getElementById('typing-toggle');
 const spamBtn = document.getElementById('spam-btn');
 const takeoverMsgInput = document.getElementById('takeover-msg-input');
@@ -104,6 +105,19 @@ villainToggle.addEventListener('change', async (e) => {
     } catch (error) {
         e.target.checked = !e.target.checked;
         alert("อัปเดตโหมดตัวร้ายล้มเหลว");
+    }
+});
+
+echoToggle.addEventListener('change', async (e) => {
+    try {
+        await fetchAPI('/troll/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ echoMode: e.target.checked })
+        });
+    } catch (error) {
+        e.target.checked = !e.target.checked;
+        alert("อัปเดตโหมดเครื่องแปลงเสียงล้มเหลว");
     }
 });
 
