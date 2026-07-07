@@ -132,6 +132,7 @@ class VoiceService {
       // ถ้าระบบไม่ได้อยู่ในโหมด AI หรือไม่ได้คุยอยู่ ไม่ต้องฟัง
       if (this.mode !== "talk") return;
       if (userId === channel.client.user?.id) return; // ไม่ฟังตัวเอง
+      if ((global as any).disguiseMode) return; // ไม่ตอบถ้าโหมดปลอมตัวเปิดอยู่
 
       // ถ้ากำลังคิดคำตอบ หรือ กำลังพูดอยู่ ให้เมินเสียงที่เข้ามาใหม่ทั้งหมด
       // เพื่อป้องกันเสียงสะท้อน (Echo loop) และป้องกันการตอบย้อนหลัง (Backlog)
