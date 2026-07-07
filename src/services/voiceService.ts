@@ -414,7 +414,7 @@ class VoiceService {
           const ffmpegBinary = process.env.FFMPEG_PATH || ffmpegPath || "ffmpeg";
           
           await new Promise<void>((resolve, reject) => {
-            const args = ["-y", "-i", tempFilePath, "-af", "asetrate=48000*0.6,atempo=1/0.6", pitchedPath];
+            const args = ["-y", "-i", tempFilePath, "-af", "asetrate=48000*0.4,atempo=1/0.4", pitchedPath];
             execFile(ffmpegBinary, args, (err) => {
               if (err) reject(err);
               else resolve();

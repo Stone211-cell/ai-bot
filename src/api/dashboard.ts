@@ -174,8 +174,9 @@ dashboardRouter.get("/voice/status/:guildId", (req, res) => {
 // Helper for pitch shifting
 const pitchShift = (inputPath: string, outputPath: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // ลด pitch ลงเพื่อทำเสียงตัวร้าย (asetrate เปลี่ยน pitch และ speed, atempo ปรับ speed กลับ)
-    const cmd = `"${ffmpegStatic}" -i "${inputPath}" -af "asetrate=48000*0.6,atempo=1/0.6" -y "${outputPath}"`;
+    // ลด pitch ลงเพื่อทำเสียงตัวร้ายแบบลึกสุดๆ (The Hulk)
+    // asetrate=48000*0.4 (ลดระดับเสียงลง 60%), atempo=1/0.4 (ปรับความเร็วกลับให้เท่าเดิม)
+    const cmd = `"${ffmpegStatic}" -i "${inputPath}" -af "asetrate=48000*0.4,atempo=1/0.4" -y "${outputPath}"`;
     exec(cmd, (err) => {
       if (err) reject(err);
       else resolve();
