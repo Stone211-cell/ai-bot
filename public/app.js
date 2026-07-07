@@ -45,6 +45,7 @@ const spamCount = document.getElementById('spam-count');
 const spamInput = document.getElementById('spam-input');
 const spamStartBtn = document.getElementById('spam-start-btn');
 const spamStopBtn = document.getElementById('spam-stop-btn');
+const takeoverInput = document.getElementById('takeover-input');
 const takeoverBtn = document.getElementById('takeover-btn');
 const kickSelector = document.getElementById('kick-selector');
 const kickBtn = document.getElementById('kick-btn');
@@ -531,14 +532,21 @@ spamStopBtn.addEventListener('click', async () => {
 
 takeoverBtn.addEventListener('click', async () => {
     if (!currentGuild) return;
-    if (confirm("คุณแน่ใจนะว่าจะประกาศยึดครองโลกทุกห้องแชท?")) {
+    const customText = takeoverInput.value.trim();
+    if (!customText) {
+        alert("กรุณาพิมพ์ข้อความประกาศด้วยครับ");
+        return;
+    }
+    
+    if (confirm("คุณแน่ใจนะว่าจะประกาศข้อความนี้ไปยังทุกห้องแชท?")) {
         try {
             await fetchAPI('/troll/takeover', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ guildId: currentGuild })
+                body: JSON.stringify({ guildId: currentGuild, message: customText })
             });
-            alert("ระบบได้เริ่มยึดครองเซิร์ฟเวอร์แล้ว!");
+            alert("ประกาศส่งไปทุกห้องแล้ว!");
+            takeoverInput.value = '';
         } catch (e) {
             alert("ประกาศไม่สำเร็จ");
         }

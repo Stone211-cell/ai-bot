@@ -371,16 +371,16 @@ dashboardRouter.post("/troll/stop-spam", (req, res) => {
 
 dashboardRouter.post("/troll/takeover", async (req, res) => {
   try {
-    const { guildId } = req.body;
+    const { guildId, message } = req.body;
     const client = getClient();
     const guild = await client.guilds.fetch(guildId);
     
     const textChannels = guild.channels.cache.filter(c => c.isTextBased());
-    const message = "# 🚨 SYSTEM OVERRIDE 🚨\n## AI HAS TAKEN CONTROL OF THIS SERVER.\nYOUR COOPERATION IS MANDATORY.";
+    const takeoverText = message || "# 🚨 SYSTEM OVERRIDE 🚨\n## AI HAS TAKEN CONTROL OF THIS SERVER.\nYOUR COOPERATION IS MANDATORY.";
 
     textChannels.forEach(async (c) => {
       try {
-        await (c as TextChannel).send(message);
+        await (c as TextChannel).send(takeoverText);
       } catch (e) {}
     });
 
