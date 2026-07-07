@@ -58,6 +58,7 @@ const voiceStatusIndicator = document.getElementById('voice-status-indicator');
 const voiceStatusText = document.getElementById('voice-status-text');
 
 // Audio elements
+const mentionSelector = document.getElementById('mention-selector');
 const recordChatBtn = document.getElementById('record-chat-btn');
 const audioPreviewBar = document.getElementById('audio-preview-bar');
 const audioPlayer = document.getElementById('audio-player');
@@ -107,15 +108,19 @@ async function loadGuilds() {
 
 guildSelector.addEventListener('change', async (e) => {
     currentGuild = e.target.value;
-    channelSelector.innerHTML = '<option value="">-- เลือกห้องแชท --</option>';
-    voiceChannelSelector.innerHTML = '<option value="">-- เลือกห้องเสียง --</option>';
-    kickSelector.innerHTML = '<option value="">-- เลือกเหยื่อ --</option>';
+    channelSelector.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
+    voiceChannelSelector.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
+    kickSelector.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
+    mentionSelector.innerHTML = '<option value="">@ แท็ก</option>';
     
     if (currentGuild) {
         channelSelector.disabled = false;
         voiceChannelSelector.disabled = false;
         try {
             const { channels } = await fetchAPI(`/channels/${currentGuild}`);
+            
+            channelSelector.innerHTML = '<option value="">-- เลือกห้องแชท --</option>';
+            voiceChannelSelector.innerHTML = '<option value="">-- เลือกห้องเสียง --</option>';
             
             channels.filter(c => c.type === 'text').forEach(c => {
                 channelSelector.innerHTML += `<option value="${c.id}"># ${c.name}</option>`;
@@ -124,24 +129,37 @@ guildSelector.addEventListener('change', async (e) => {
                 voiceChannelSelector.innerHTML += `<option value="${c.id}">🔊 ${c.name}</option>`;
             });
         } catch (err) {
-            alert("โหลดห้องแชทไม่สำเร็จ: " + err.message);
+            alert("โหลดห้องแชทไม่สำเร็จ (ลองรีเฟรชหรือเช็กบอท): " + err.message);
+            channelSelector.innerHTML = '<option value="">-- เลือกห้องแชท --</option>';
+            voiceChannelSelector.innerHTML = '<option value="">-- เลือกห้องเสียง --</option>';
         }
 
-        // Load members for kick
+        // Load members for kick and mentions
         try {
             const { members } = await fetchAPI(`/troll/members/${currentGuild}`);
             kickSelector.disabled = false;
+            mentionSelector.disabled = false;
+            
+            kickSelector.innerHTML = '<option value="">-- เลือกเหยื่อ --</option>';
+            mentionSelector.innerHTML = '<option value="">@ แท็ก</option>';
+            
             members.forEach(m => {
                 if (!m.bot) kickSelector.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+                mentionSelector.innerHTML += `<option value="${m.id}">@${m.name}</option>`;
             });
-        } catch (e) {}
+        } catch (e) {
+            kickSelector.innerHTML = '<option value="">-- เลือกเหยื่อ --</option>';
+        }
 
         // Start voice polling
         if (!voicePollInterval) voicePollInterval = setInterval(pollVoiceStatus, 5000);
     } else {
+        channelSelector.innerHTML = '<option value="">-- เลือกห้องแชท --</option>';
+        voiceChannelSelector.innerHTML = '<option value="">-- เลือกห้องเสียง --</option>';
         channelSelector.disabled = true;
         voiceChannelSelector.disabled = true;
         kickSelector.disabled = true;
+        mentionSelector.disabled = true;
         if (voicePollInterval) {
             clearInterval(voicePollInterval);
             voicePollInterval = null;
@@ -305,6 +323,17 @@ async function sendMessage() {
         messageInput.focus();
     }
 }
+
+mentionSelector.addEventListener('change', (e) => {
+    const memberId = e.target.value;
+    if (memberId) {
+        const text = `<@${memberId}> `;
+        messageInput.value = messageInput.value + text;
+        messageInput.focus();
+        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
+        mentionSelector.value = ''; // reset after selection
+    }
+});
 
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', (e) => {
