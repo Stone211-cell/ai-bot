@@ -181,11 +181,72 @@ export const messageCreateEvent: BotEvent = {
       return;
     }
 
+    // ── Voice Message Changer (เครื่องแปลงเสียงในแชท) ────────────────────────
+    if (message.attachments.size > 0) {
+      const voiceAttachment = message.attachments.find(a => !!a.waveform || (a.contentType && a.contentType.includes('audio/ogg')));
+      if (voiceAttachment) {
+        try {
+          eventLogger.info(`Processing voice message from ${message.author.username}...`);
+          
+          // 1. Download the voice message
+          const fetch = (await import('node-fetch')).default;
+          const fs = await import('fs');
+          const path = await import('path');
+          
+          const response = await fetch(voiceAttachment.url);
+          const buffer = await response.buffer();
+          const tempOgg = path.join(process.cwd(), `vm-${Date.now()}.ogg`);
+          fs.writeFileSync(tempOgg, buffer);
+
+          // 2. Transcribe using Whisper
+          const { speechToTextService } = await import('../../services/speechToTextService.js');
+          const text = await speechToTextService.transcribe(tempOgg);
+          fs.unlinkSync(tempOgg);
+
+          if (text && text.length > 1) {
+            // 3. Convert to TTS
+            const ttsFilePath = path.join(process.cwd(), `vm-tts-${Date.now()}.webm`);
+            const { EdgeTTS } = await import("node-edge-tts");
+            const tts = new EdgeTTS({ voice: "th-TH-NiwatNeural", lang: "th-TH", outputFormat: "webm-24khz-16bit-mono-opus" });
+            await tts.ttsPromise(text, ttsFilePath);
+
+            let finalAudio = ttsFilePath;
+
+            // Apply villain mode if active
+            if ((global as any).villainMode) {
+              const { execFile } = await import('child_process');
+              const pitchedPath = ttsFilePath + '_pitched.webm';
+              await new Promise<void>((resolve, reject) => {
+                execFile("ffmpeg", ["-y", "-i", ttsFilePath, "-af", "asetrate=48000*0.4,atempo=1/0.4", pitchedPath], (err) => {
+                  if (err) reject(err);
+                  else resolve();
+                });
+              });
+              fs.unlinkSync(ttsFilePath);
+              finalAudio = pitchedPath;
+            }
+
+            // 4. Send back as voice message attachment
+            const { AttachmentBuilder } = await import('discord.js');
+            const attachment = new AttachmentBuilder(finalAudio, { name: 'voice_reply.ogg' });
+            await message.reply({ files: [attachment] });
+
+            fs.unlinkSync(finalAudio);
+          }
+        } catch (error: any) {
+          eventLogger.error("Voice Message Changer failed", { error: error.message });
+        }
+        return; // ห้ามไหลไปทำอย่างอื่นต่อ
+      }
+    }
+
     // ── Disguise Mode Check ───────────────────────────────────────────────
     // ถ้าผู้ใช้เปิดโหมดปลอมตัวบนหน้าเว็บ ให้หยุดการทำงาน AI ทั้งหมด
     if ((global as any).disguiseMode) {
       return;
     }
+
+
 
     // ── Dictation Mode ────────────────────────────────────────────────────
     if (voiceService.isInVoice() && voiceService.getMode() === "read") {

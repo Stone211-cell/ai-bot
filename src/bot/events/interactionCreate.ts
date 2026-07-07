@@ -18,7 +18,7 @@ export const interactionCreateEvent: BotEvent = {
     const { commandName } = interaction;
 
     // ── deferReply ทันที ก่อน async ใดๆ เพื่อไม่ให้ timeout (3 วินาที) ──
-    const isVoiceCommand = ["joinmom", "talkmom", "readmom", "leavemom"].includes(commandName);
+    const isVoiceCommand = ["joinmom", "talkmom", "readmom", "leavemom", "echomom"].includes(commandName);
     if (isVoiceCommand) {
       await interaction.deferReply({ ephemeral: true });
     }
@@ -56,6 +56,18 @@ export const interactionCreateEvent: BotEvent = {
         await interaction.deleteReply();
         // เงียบๆ เข้ามาเลย ไม่ต้องทักทาย
       } 
+      
+      else if (commandName === "echomom") {
+        if (!voiceChannel) {
+          await interaction.editReply({ content: "❌ คุณต้องอยู่ในช่องเสียงก่อนถึงจะใช้โหมดแปลงเสียงได้นะ!" });
+          return;
+        }
+
+        voiceService.setMode("echo");
+        await voiceService.join(voiceChannel, interaction.channelId);
+
+        await interaction.deleteReply();
+      }
       
       else if (commandName === "readmom") {
         if (!voiceChannel) {

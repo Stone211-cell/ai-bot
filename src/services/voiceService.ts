@@ -26,7 +26,7 @@ class VoiceService {
   private player = createAudioPlayer();
   private isPlaying = false;
   private queue: string[] = [];
-  private mode: "read" | "talk" = "talk";
+  private mode: "read" | "talk" | "echo" = "talk";
   private lastTextChannelId: string | null = null;
   private leaveTimeout: NodeJS.Timeout | null = null;
 
@@ -72,6 +72,14 @@ class VoiceService {
       const oldNetworking = Reflect.get(oldState, "networking");
       const newNetworking = Reflect.get(newState, "networking");
 
+      // Fix UDP Timeout
+      const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+        const newUdp = Reflect.get(newNetworkState, 'udp');
+        clearInterval(newUdp?.keepAliveInterval);
+      };
+      oldNetworking?.off('stateChange', networkStateChangeHandler);
+      newNetworking?.on('stateChange', networkStateChangeHandler);
+
       const networkStateChange = (oldNetworking && newNetworking) ? 
         `Network: ${Reflect.get(oldNetworking, "state")?.code} -> ${Reflect.get(newNetworking, "state")?.code}` : "";
       
@@ -92,10 +100,8 @@ class VoiceService {
       await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
       voiceLogger.info("Voice connection is Ready");
     } catch (err) {
-      voiceLogger.error("Voice connection failed to become Ready (UDP Timeout)", { err });
-      this.connection.destroy();
-      this.connection = null;
-      throw new Error("Voice connection failed to become Ready (UDP Timeout)");
+      voiceLogger.warn("Voice connection Ready timeout (UDP Timeout) - ignoring and trying to continue", { err });
+      // ไม่ต้อง destroy หรอก ลองฝืนไปต่อ เผื่อมันเล่นได้
     }
 
     this.connection.subscribe(this.player);
@@ -129,8 +135,8 @@ class VoiceService {
     const receiver = this.connection.receiver;
 
     receiver.speaking.on("start", (userId) => {
-      // ถ้าระบบไม่ได้อยู่ในโหมด AI หรือไม่ได้คุยอยู่ ไม่ต้องฟัง
-      if (this.mode !== "talk") return;
+      // ถ้าระบบไม่ได้อยู่ในโหมด AI หรือเครื่องแปลงเสียง ไม่ต้องฟัง
+      if (this.mode !== "talk" && this.mode !== "echo") return;
       if (userId === channel.client.user?.id) return; // ไม่ฟังตัวเอง
       if ((global as any).disguiseMode) return; // ไม่ตอบถ้าโหมดปลอมตัวเปิดอยู่
 
@@ -240,6 +246,12 @@ class VoiceService {
             const user = await channel.client.users.fetch(userId).catch(() => null);
             const username = user?.username || "VoiceUser";
 
+            // ถ้าอยู่ในโหมดเครื่องแปลงเสียง ให้พูดกลับไปเลย ข้าม AI
+            if (this.mode === "echo") {
+              this.speak(text);
+              return;
+            }
+
             // 3. ส่งข้อความให้ AI คิดคำตอบ
             const result = await chatService.processMessage({
               discordId: userId,
@@ -257,8 +269,8 @@ class VoiceService {
             if (!result.reply.includes("[IGNORE]")) {
               this.speak(result.reply);
             }
-          } catch (err: any) {
-            voiceLogger.error("Error processing voice input", { error: err.message });
+          } catch (error: any) {
+            voiceLogger.error("Error processing voice input", { error: error.message });
             if (fs.existsSync(tempWavPath)) {
               fs.unlink(tempWavPath, () => {});
             }
@@ -298,11 +310,12 @@ class VoiceService {
     }
   }
 
-  public setMode(newMode: "read" | "talk") {
-    this.mode = newMode;
+  public setMode(mode: "read" | "talk" | "echo") {
+    this.mode = mode;
+    voiceLogger.info(`Changed mode to ${mode}`);
   }
 
-  public getMode(): "read" | "talk" {
+  public getMode(): "read" | "talk" | "echo" {
     return this.mode;
   }
 
