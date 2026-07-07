@@ -41,14 +41,11 @@ const ttsInput = document.getElementById('tts-input');
 const ttsSendBtn = document.getElementById('tts-send-btn');
 
 // Troll Panel Elements
-const disguiseToggle = document.getElementById('disguise-toggle');
-const villainToggle = document.getElementById('villain-toggle');
+const disguiseToggle = document.getElementById('disguise-mode-toggle');
+const villainToggle = document.getElementById('villain-mode-toggle');
 const typingToggle = document.getElementById('typing-toggle');
-const spamCount = document.getElementById('spam-count');
-const spamInput = document.getElementById('spam-input');
-const spamStartBtn = document.getElementById('spam-start-btn');
-const spamStopBtn = document.getElementById('spam-stop-btn');
-const takeoverInput = document.getElementById('takeover-input');
+const spamBtn = document.getElementById('spam-btn');
+const takeoverMsgInput = document.getElementById('takeover-msg-input');
 const takeoverBtn = document.getElementById('takeover-btn');
 const kickSelector = document.getElementById('kick-selector');
 const kickBtn = document.getElementById('kick-btn');
@@ -83,6 +80,33 @@ async function fetchAPI(endpoint, options = {}) {
 }
 
 // --- Auth ---
+// Toggle updates
+disguiseToggle.addEventListener('change', async (e) => {
+    try {
+        await fetchAPI('/troll/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ disguiseMode: e.target.checked })
+        });
+    } catch (error) {
+        e.target.checked = !e.target.checked;
+        alert("อัปเดตโหมดปลอมตัวล้มเหลว");
+    }
+});
+
+villainToggle.addEventListener('change', async (e) => {
+    try {
+        await fetchAPI('/troll/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ villainMode: e.target.checked })
+        });
+    } catch (error) {
+        e.target.checked = !e.target.checked;
+        alert("อัปเดตโหมดตัวร้ายล้มเหลว");
+    }
+});
+
 loginBtn.addEventListener('click', async () => {
     password = pwdInput.value;
     try {
@@ -176,7 +200,6 @@ channelSelector.addEventListener('change', (e) => {
         currentChannelName.textContent = channelSelector.options[channelSelector.selectedIndex].text;
         messageInput.disabled = false;
         sendBtn.disabled = false;
-        spamStartBtn.disabled = false;
         deleteChannelBtn.disabled = false;
         loadChat();
         if (chatInterval) clearInterval(chatInterval);
@@ -184,7 +207,6 @@ channelSelector.addEventListener('change', (e) => {
     } else {
         messageInput.disabled = true;
         sendBtn.disabled = true;
-        spamStartBtn.disabled = true;
         deleteChannelBtn.disabled = true;
         if (chatInterval) clearInterval(chatInterval);
         chatMessages.innerHTML = `
@@ -196,11 +218,14 @@ channelSelector.addEventListener('change', (e) => {
     }
 });
 
+let currentMessages = [];
+
 // --- Chat View ---
 async function loadChat() {
     if (!currentChannel) return;
     try {
         const { messages } = await fetchAPI(`/messages/${currentChannel}`);
+        currentMessages = messages;
         renderChat(messages);
     } catch (e) {
         console.error("Failed to load chat", e);
@@ -210,6 +235,16 @@ async function loadChat() {
 function renderChat(messages) {
     const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 50;
     
+    if (!messages || messages.length === 0) {
+        chatMessages.innerHTML = `
+            <div class="empty-state">
+                <i class="fa-regular fa-comments"></i>
+                <p>ไม่มีข้อความในห้องนี้ พิมพ์ทักทายเลย!</p>
+            </div>
+        `;
+        return;
+    }
+
     let html = '';
     messages.forEach(m => {
         const isSelf = m.author.username === 'urmomisbot' || m.author.username.includes('bot'); 
@@ -243,7 +278,7 @@ function renderChat(messages) {
                         <span class="message-author">${m.author.username}</span>
                         <span class="message-time">${time}</span>
                     </div>
-                    <div class="message-bubble" onclick="${!isSelf ? `prepareReply('${m.id}', '${m.content.replace(/'/g, "\\'")}')` : ''}">
+                    <div class="message-bubble" ${!isSelf ? `onclick="prepareReply('${m.id}')"` : ''}>
                         ${replyHtml}
                         ${contentSafe}
                         ${attachmentsHtml}
@@ -261,10 +296,12 @@ function renderChat(messages) {
 }
 
 // --- Reply & Attachments ---
-window.prepareReply = (msgId, content) => {
+window.prepareReply = (msgId) => {
+    const msg = currentMessages.find(m => m.id === msgId);
+    if (!msg) return;
     replyToMessageId = msgId;
     replyingToBar.classList.remove('hidden');
-    replyToText.textContent = content;
+    replyToText.textContent = msg.content || '[รูปภาพ/ไฟล์]';
     messageInput.focus();
 };
 
@@ -533,26 +570,6 @@ sendAudioMsgBtn.addEventListener('click', async () => {
 });
 
 // --- Troll Panel Controls ---
-async function updateTrollState() {
-    try {
-        console.log("Updating troll state:", disguiseToggle.checked, villainToggle.checked);
-        const res = await fetchAPI('/troll/state', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                disguiseMode: disguiseToggle.checked,
-                villainMode: villainToggle.checked
-            })
-        });
-        console.log("State updated:", res);
-    } catch (e) {
-        console.error("Failed to sync troll state", e);
-    }
-}
-
-disguiseToggle.addEventListener('change', updateTrollState);
-villainToggle.addEventListener('change', updateTrollState);
-
 typingToggle.addEventListener('change', (e) => {
     if (e.target.checked) {
         if (typingInterval) clearInterval(typingInterval);
@@ -570,35 +587,18 @@ typingToggle.addEventListener('change', (e) => {
     }
 });
 
-spamStartBtn.addEventListener('click', async () => {
-    const count = spamCount.value || 10;
-    const text = spamInput.value;
-    if (!text || !currentChannel) return;
-
+makeDoubleConfirm(spamBtn, 'สแปมรัว 10 ครั้ง?', async () => {
+    if (!currentChannel || !currentGuild) return;
+    const msg = prompt('ข้อความที่จะสแปม (สแปมรัว 10 ครั้ง):', 'Wake up!');
+    if (!msg) return;
     try {
         await fetchAPI('/troll/spam', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ channelId: currentChannel, text, count })
+            body: JSON.stringify({ guildId: currentGuild, channelId: currentChannel, message: msg, count: 10 })
         });
-        spamStartBtn.classList.add('hidden');
-        spamStopBtn.classList.remove('hidden');
     } catch (e) {
-        alert("เริ่มสแปมไม่สำเร็จ");
-    }
-});
-
-spamStopBtn.addEventListener('click', async () => {
-    try {
-        await fetchAPI('/troll/stop-spam', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ channelId: currentChannel })
-        });
-        spamStopBtn.classList.add('hidden');
-        spamStartBtn.classList.remove('hidden');
-    } catch (e) {
-        alert("หยุดสแปมไม่สำเร็จ");
+        alert("สแปมล้มเหลว");
     }
 });
 

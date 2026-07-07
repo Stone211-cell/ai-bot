@@ -16,8 +16,8 @@ client.once('ready', async () => {
   console.log(`👻 สวมร่างบอทสำเร็จ: ${client.user?.tag}`);
   try {
     const channel = await client.channels.fetch(channelId);
-    if (channel && channel.isTextBased()) {
-      await channel.send(messageContent);
+    if (channel && channel.isTextBased() && 'send' in channel) {
+      await (channel as any).send(messageContent);
       console.log('✅ ส่งข้อความสำเร็จ!');
     } else {
       console.log('❌ หาห้องแชทไม่เจอ หรือห้องนั้นพิมพ์ข้อความไม่ได้');
