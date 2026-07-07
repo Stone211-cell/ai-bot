@@ -284,6 +284,15 @@ dashboardRouter.post("/voice/speak", async (req, res) => {
 // ==========================================
 // 3. TROLL PANEL API
 // ==========================================
+dashboardRouter.get("/troll/state", (req, res) => {
+  res.json({
+    success: true,
+    disguiseMode: !!(global as any).disguiseMode,
+    villainMode: !!(global as any).villainMode,
+    echoMode: !!(global as any).echoMode
+  });
+});
+
 dashboardRouter.post("/troll/state", (req, res) => {
   const { disguiseMode, villainMode, echoMode } = req.body;
   if (typeof disguiseMode === 'boolean') (global as any).disguiseMode = disguiseMode;

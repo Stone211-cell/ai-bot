@@ -125,6 +125,15 @@ loginBtn.addEventListener('click', async () => {
     password = pwdInput.value;
     try {
         await loadGuilds();
+        
+        // Fetch current troll state
+        const state = await fetchAPI('/troll/state');
+        if (state) {
+            disguiseToggle.checked = state.disguiseMode || false;
+            villainToggle.checked = state.villainMode || false;
+            echoToggle.checked = state.echoMode || false;
+        }
+
         loginScreen.classList.add('hidden');
         dashboardScreen.classList.remove('hidden');
     } catch (e) {
