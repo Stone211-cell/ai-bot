@@ -22,21 +22,20 @@
     </div>
 
     <!-- Main Dashboard -->
-    <div id="dashboard-screen" class="screen hidden">
-        
-        <!-- Sidebar -->
-        <aside class="sidebar glass-panel">
+    <div id="dashboard-screen" class="hidden dashboard-grid">
+        <!-- Left Sidebar (Navigation & Voice) -->
+        <aside class="sidebar glass-panel left-sidebar">
             <div class="logo">
-                <i class="fa-solid fa-ghost"></i> Bot Control
+                <i class="fa-solid fa-robot"></i> Villain Dashboard
             </div>
             
-            <div class="selector-group">
+            <div class="selector-group mt-3">
                 <label>เซิร์ฟเวอร์ (Guild)</label>
                 <select id="guild-selector">
-                    <option value="">-- เลือกเซิร์ฟเวอร์ --</option>
+                    <option value="">-- กำลังโหลด --</option>
                 </select>
             </div>
-
+            
             <div class="selector-group">
                 <label>ห้องแชท (Text Channel)</label>
                 <select id="channel-selector" disabled>
@@ -46,84 +45,26 @@
 
             <hr class="divider">
 
-            <div class="voice-controls mt-3">
-                <h3><i class="fa-solid fa-microphone-lines"></i> ระบบเสียง (Voice)</h3>
+            <div class="voice-controls mt-2">
+                <h3><i class="fa-solid fa-microphone-lines"></i> ระบบเสียง</h3>
                 <div class="selector-group">
                     <select id="voice-channel-selector" disabled>
                         <option value="">-- เลือกห้องเสียง --</option>
                     </select>
                 </div>
-                <div class="voice-buttons">
-                    <button id="join-voice-btn" class="btn btn-outline" disabled>เข้าห้องเสียง</button>
-                    <button id="leave-voice-btn" class="btn btn-danger hidden">ออกห้อง</button>
-                </div>
-            </div>
-
-            <hr class="divider">
-
-            <div class="troll-panel">
-                <h3 class="danger-text"><i class="fa-solid fa-skull"></i> Troll Panel</h3>
-                
-                <div class="switch-group">
-                    <label class="switch">
-                        <input type="checkbox" id="disguise-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="switch-label">🕵️ โหมดปลอมตัว (ปิด AI)</span>
-                </div>
-
-                <div class="switch-group">
-                    <label class="switch">
-                        <input type="checkbox" id="villain-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="switch-label">👹 เสียงตัวร้าย</span>
-                </div>
-
-                <div class="switch-group">
-                    <label class="switch">
-                        <input type="checkbox" id="typing-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="switch-label">⌨️ สถานะ "กำลังพิมพ์"</span>
-                </div>
-
-                <div class="troll-actions mt-3">
-                    <label>สแปมข้อความ</label>
-                    <div class="input-with-btn mb-2">
-                        <input type="number" id="spam-count" placeholder="ครั้ง" min="1" max="100" style="width: 70px;">
-                        <input type="text" id="spam-input" placeholder="ข้อความ...">
-                    </div>
-                    <div class="voice-buttons">
-                        <button id="spam-start-btn" class="btn btn-danger" disabled>เริ่มสแปม</button>
-                        <button id="spam-stop-btn" class="btn btn-outline hidden">หยุด!</button>
-                    </div>
-
-                    <label class="mt-3">ประกาศ (ส่งเข้าทุกห้องแชท)</label>
-                    <div class="input-with-btn">
-                        <input type="text" id="takeover-input" placeholder="พิมพ์ข้อความประกาศยึดครองโลก...">
-                    </div>
-                    <button id="takeover-btn" class="btn btn-danger pulse-btn mt-2">🚨 ส่งประกาศทุกห้อง</button>
-
-                    <label class="mt-3">เตะสมาชิก</label>
-                    <div class="input-with-btn">
-                        <select id="kick-selector" disabled>
-                            <option value="">-- เลือกเหยื่อ --</option>
-                        </select>
-                        <button id="kick-btn" class="btn btn-danger" disabled>เตะ</button>
-                    </div>
-
-                    <button id="delete-channel-btn" class="btn btn-danger mt-3" disabled><i class="fa-solid fa-bomb"></i> ระเบิดห้องทิ้ง</button>
+                <div class="voice-buttons mt-2">
+                    <button id="join-voice-btn" class="btn btn-outline" disabled>เชื่อมต่อ</button>
+                    <button id="leave-voice-btn" class="btn btn-danger hidden">ตัดการเชื่อมต่อ</button>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Chat Area -->
+        <!-- Middle (Main Chat Area) -->
         <main class="chat-area glass-panel">
-            <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 id="current-channel-name"># เลือกห้องแชท</h3>
+            <div class="chat-header">
+                <h3 id="current-channel-name" class="channel-title"># เลือกห้องแชท</h3>
                 <div class="voice-status" id="voice-status-indicator">
-                    <span class="status-dot"></span> <span id="voice-status-text">ไม่ได้อยู่ในห้องเสียง</span>
+                    <span class="status-dot"></span> <span id="voice-status-text">ออฟไลน์เสียง</span>
                 </div>
             </div>
             
@@ -133,30 +74,27 @@
                     <p>เลือกห้องแชทเพื่อดูข้อความ</p>
                 </div>
             </div>
-
-            <div id="replying-to-bar" class="hidden">
-                <div class="reply-info">
-                    <span>กำลังตอบกลับ: </span>
-                    <span id="reply-to-text" class="text-truncate">...</span>
-                </div>
-                <button id="cancel-reply-btn"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="attachment-preview-bar" class="hidden">
-                <div class="attachment-info">
-                    <i class="fa-solid fa-image"></i>
-                    <span id="attachment-name">image.png</span>
-                </div>
-                <button id="cancel-attachment-btn"><i class="fa-solid fa-xmark"></i></button>
+            
+            <!-- Context Bars -->
+            <div id="replying-to-bar" class="hidden context-bar">
+                <span class="text-truncate">Replying to: <span id="reply-to-text"></span></span>
+                <button id="cancel-reply-btn" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div id="audio-preview-bar" class="hidden">
+            <div id="attachment-preview-bar" class="hidden context-bar">
+                <span class="text-truncate"><i class="fa-solid fa-file"></i> <span id="attachment-name"></span></span>
+                <button id="cancel-attachment-btn" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="audio-preview-bar" class="hidden context-bar audio-bar">
                 <audio id="audio-player" controls></audio>
                 <div class="audio-controls">
-                    <button id="send-audio-msg-btn" class="btn btn-primary">ส่งเข้าแชท</button>
-                    <button id="cancel-audio-btn" class="btn btn-danger">ยกเลิก</button>
+                    <button id="send-audio-msg-btn" class="btn btn-primary btn-sm">ส่งเสียง</button>
+                    <button id="cancel-audio-btn" class="btn btn-danger btn-sm">ยกเลิก</button>
                 </div>
             </div>
 
+            <!-- Input Area -->
             <div class="chat-input-area">
                 <input type="file" id="file-input" class="hidden" accept="image/*,video/*,audio/*">
                 

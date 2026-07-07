@@ -143,11 +143,10 @@ dashboardRouter.post("/voice/join", async (req, res) => {
     const channel = await client.channels.fetch(channelId);
     if (!channel || !channel.isVoiceBased()) return res.status(404).json({ error: "Voice channel not found" });
 
-    joinVoiceChannel({
-      channelId: channel.id,
-      guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator as any,
-    });
+    // ใช้ voiceService.join เพื่อให้ระบบบันทึกสถานะได้ถูกต้อง
+    const { voiceService } = await import("../services/voiceService.js");
+    await voiceService.join(channel);
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: String(error) });
@@ -156,14 +155,9 @@ dashboardRouter.post("/voice/join", async (req, res) => {
 
 dashboardRouter.post("/voice/leave", async (req, res) => {
   try {
-    const { guildId } = req.body;
-    const connection = getVoiceConnection(guildId);
-    if (connection) {
-      connection.destroy();
-      res.json({ success: true });
-    } else {
-      res.status(404).json({ error: "Not in a voice channel" });
-    }
+    const { voiceService } = await import("../services/voiceService.js");
+    voiceService.leave();
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: String(error) });
   }

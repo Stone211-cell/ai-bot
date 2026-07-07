@@ -465,7 +465,8 @@ sendAudioMsgBtn.addEventListener('click', async () => {
 // --- Troll Panel Controls ---
 async function updateTrollState() {
     try {
-        await fetchAPI('/troll/state', {
+        console.log("Updating troll state:", disguiseToggle.checked, villainToggle.checked);
+        const res = await fetchAPI('/troll/state', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -473,6 +474,7 @@ async function updateTrollState() {
                 villainMode: villainToggle.checked
             })
         });
+        console.log("State updated:", res);
     } catch (e) {
         console.error("Failed to sync troll state", e);
     }
@@ -530,7 +532,34 @@ spamStopBtn.addEventListener('click', async () => {
     }
 });
 
-takeoverBtn.addEventListener('click', async () => {
+// --- Double Confirm Utility ---
+function makeDoubleConfirm(btnElement, confirmText, actionCallback) {
+    let isConfirming = false;
+    let timeout;
+    const originalHtml = btnElement.innerHTML;
+    
+    btnElement.addEventListener('click', () => {
+        if (!isConfirming) {
+            isConfirming = true;
+            btnElement.innerHTML = `⚠️ ${confirmText}`;
+            btnElement.classList.add('confirming');
+            timeout = setTimeout(() => {
+                isConfirming = false;
+                btnElement.innerHTML = originalHtml;
+                btnElement.classList.remove('confirming');
+            }, 3000);
+        } else {
+            clearTimeout(timeout);
+            isConfirming = false;
+            btnElement.innerHTML = originalHtml;
+            btnElement.classList.remove('confirming');
+            actionCallback();
+        }
+    });
+}
+
+// Attach double confirms
+makeDoubleConfirm(takeoverBtn, 'กดยืนยันอีกครั้ง!', async () => {
     if (!currentGuild) return;
     const customText = takeoverInput.value.trim();
     if (!customText) {
@@ -538,18 +567,16 @@ takeoverBtn.addEventListener('click', async () => {
         return;
     }
     
-    if (confirm("คุณแน่ใจนะว่าจะประกาศข้อความนี้ไปยังทุกห้องแชท?")) {
-        try {
-            await fetchAPI('/troll/takeover', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ guildId: currentGuild, message: customText })
-            });
-            alert("ประกาศส่งไปทุกห้องแล้ว!");
-            takeoverInput.value = '';
-        } catch (e) {
-            alert("ประกาศไม่สำเร็จ");
-        }
+    try {
+        await fetchAPI('/troll/takeover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guildId: currentGuild, message: customText })
+        });
+        alert("ประกาศส่งไปทุกห้องแล้ว!");
+        takeoverInput.value = '';
+    } catch (e) {
+        alert("ประกาศไม่สำเร็จ");
     }
 });
 
@@ -557,39 +584,35 @@ kickSelector.addEventListener('change', (e) => {
     kickBtn.disabled = !e.target.value;
 });
 
-kickBtn.addEventListener('click', async () => {
+makeDoubleConfirm(kickBtn, 'เตะแน่ใจนะ?', async () => {
     const memberId = kickSelector.value;
     if (!memberId || !currentGuild) return;
     
-    if (confirm("ต้องการเตะคนนี้จริงๆ ใช่ไหม?")) {
-        try {
-            await fetchAPI('/troll/kick', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ guildId: currentGuild, memberId })
-            });
-            alert("เตะสำเร็จ!");
-            // Refresh member list
-            guildSelector.dispatchEvent(new Event('change'));
-        } catch (e) {
-            alert("เตะไม่สำเร็จ บอทอาจยศต่ำกว่า");
-        }
+    try {
+        await fetchAPI('/troll/kick', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guildId: currentGuild, memberId })
+        });
+        alert("เตะสำเร็จ!");
+        guildSelector.dispatchEvent(new Event('change'));
+    } catch (e) {
+        alert("เตะไม่สำเร็จ บอทอาจยศต่ำกว่า");
     }
 });
 
-deleteChannelBtn.addEventListener('click', async () => {
+makeDoubleConfirm(deleteChannelBtn, 'ระเบิดห้อง! ยืนยัน?', async () => {
     if (!currentChannel) return;
-    if (confirm("ระวัง! การลบห้องแชทไม่สามารถกู้คืนได้ แน่ใจนะ?")) {
-        try {
-            await fetchAPI('/troll/delete-channel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId: currentChannel })
-            });
-            alert("ลบห้องทิ้งแล้ว!");
-            guildSelector.dispatchEvent(new Event('change')); // Refresh
-        } catch (e) {
-            alert("ลบห้องไม่สำเร็จ");
-        }
+    
+    try {
+        await fetchAPI('/troll/delete-channel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId: currentChannel })
+        });
+        alert("ลบห้องทิ้งแล้ว!");
+        guildSelector.dispatchEvent(new Event('change'));
+    } catch (e) {
+        alert("ลบห้องไม่สำเร็จ");
     }
 });
