@@ -252,15 +252,27 @@ dashboardRouter.post("/voice/speak", async (req, res) => {
     const connection = getVoiceConnection(guildId);
     if (!connection) return res.status(400).json({ error: "Bot is not in a voice channel" });
 
-    // TODO: สำหรับ TTS ของ Google มันส่งเป็น URL กลับมา
-    // ถ้าจะทำ Pitch Shift ต้องโหลดไฟล์มาก่อน ค่อยเข้า ffmpeg
-    // เบื้องต้นถ้าเป็น TTS อาจจะไม่ดัด หรือใช้วิธีโหลดก่อน
-    const audioUrl = getAudioUrl(text, { lang: 'th', slow: false, host: 'https://translate.google.com' });
-    
+    let filePath = path.join(process.cwd(), `tts-dashboard-${Date.now()}.webm`);
+    const { EdgeTTS } = await import("node-edge-tts");
+    const tts = new EdgeTTS({ voice: "th-TH-NiwatNeural", lang: "th-TH", outputFormat: "webm-24khz-16bit-mono-opus" });
+    await tts.ttsPromise(text, filePath);
+
+    if ((global as any).villainMode) {
+      const pitchedPath = filePath + '_pitched.webm';
+      await pitchShift(filePath, pitchedPath);
+      fs.unlink(filePath, () => {});
+      filePath = pitchedPath;
+    }
+
     const player = createAudioPlayer();
-    const resource = createAudioResource(audioUrl);
+    const resource = createAudioResource(filePath);
     player.play(resource);
     connection.subscribe(player);
+
+    // Clean up file after playing
+    player.on(AudioPlayerStatus.Idle, () => {
+      fs.unlink(filePath, () => {});
+    });
 
     res.json({ success: true });
   } catch (error) {
