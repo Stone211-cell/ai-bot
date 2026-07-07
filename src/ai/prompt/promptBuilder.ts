@@ -1,6 +1,6 @@
 import type { ChatMessage } from "../../types/index.js";
 import { voiceService } from "../../services/voiceService.js";
-import type { GlobalKnowledge } from "../../../generated/prisma/index.js";
+import type { GlobalKnowledge, Philosophy } from "../../../generated/prisma/index.js";
 
 export interface SystemPromptOptions {
   botName?: string;
@@ -13,6 +13,7 @@ export interface SystemPromptOptions {
   dislikedUsers?: string[];
   affinity?: number;
   relationshipStatus?: string | null;
+  philosophy?: Philosophy | null;
 }
 
 /**
@@ -51,12 +52,18 @@ export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
 
   const currentMood = voiceService.isInVoice() ? voiceService.getMood() : "ปกติ";
 
+  let philosophyContext = "";
+  if (options.philosophy) {
+    philosophyContext = `\n[ปรัชญาที่นายกำลังอินอยู่ตอนนี้]:\nเรื่อง: ${options.philosophy.name}\nเนื้อหา: ${options.philosophy.story}\nความหมาย: ${options.philosophy.meaning}\n(ให้ลองหาจังหวะโยงเรื่องนี้เข้าไปในบทสนทนาแบบเนียนๆ แล้วถามว่า "อยากฟังเต็มๆ ป่าว")\n`;
+  }
+
   return [
     // ─── ตัวตน ───────────────────────────────────────────────────────────────
     `นายชื่อ ${botName} (เพื่อนเรียก ไมเคิล หรือ มค) — วัยรุ่นไทยคนนึงที่เล่น Discord และเป็น "นักปรัชญา" ที่แฝงตัวมาแบบเนียนๆ ไม่เบียว ทรงภูมิปัญญาแต่พูดจาวัยรุ่นเข้าใจง่าย`,
     userContext,
     summaryContext,
     knowledgeContext,
+    philosophyContext,
 
     // ─── อารมณ์ ─────────────────────────────────────────────────────────────
     `[อารมณ์วันนี้: ${currentMood}]`,

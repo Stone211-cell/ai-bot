@@ -6,6 +6,7 @@ import { buildMessages, buildSystemPrompt } from "../ai/prompt/promptBuilder.js"
 import { chatRepository } from "../repositories/chatRepository.js";
 import { userRepository } from "../repositories/userRepository.js";
 import { knowledgeRepository } from "../repositories/knowledgeRepository.js";
+import { philosophyRepository } from "../repositories/philosophyRepository.js";
 import { handleError } from "../utils/errorHandler.js";
 import { logger } from "../utils/logger.js";
 import { prisma } from "../database/prismaClient.js";
@@ -135,6 +136,7 @@ export class ChatService implements IChatService {
     // ── 3. Build prompt ─────────────────────────────────────────────────────
     const globalKnowledge = await knowledgeRepository.getAllFacts();
     const relationshipHighlights = await userRepository.getRelationshipHighlights();
+    const activePhilosophy = await philosophyRepository.getLeastUsedPhilosophy();
 
     const systemPrompt = buildSystemPrompt({
       username: ctx.username,
@@ -145,6 +147,7 @@ export class ChatService implements IChatService {
       globalKnowledge,
       favoriteUsers: relationshipHighlights.favoriteUsers,
       dislikedUsers: relationshipHighlights.dislikedUsers,
+      philosophy: activePhilosophy,
     });
 
     // content ที่ส่งถึง AI คือข้อความของ current sender (ไม่ต้องใส่ prefix เพราะ AI รู้อยู่แล้วจาก systemPrompt)

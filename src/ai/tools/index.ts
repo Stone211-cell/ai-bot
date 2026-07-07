@@ -103,6 +103,28 @@ export const functionDeclarations = [
       required: ["nickname"], // make discord_id optional for the AI
     },
   },
+  {
+    name: "learn_philosophy",
+    description: "Learn and memorize a new philosophical concept or paradox (e.g., Ship of Theseus, Grandfather Paradox). Use this when you find a cool new paradox from the internet to store in your brain.",
+    parameters: {
+      type: "OBJECT" as unknown as Type,
+      properties: {
+        name: {
+          type: "STRING" as unknown as Type,
+          description: "The name of the philosophy or paradox (e.g., 'Ship of Theseus')",
+        },
+        story: {
+          type: "STRING" as unknown as Type,
+          description: "The story, background, or thought experiment behind it",
+        },
+        meaning: {
+          type: "STRING" as unknown as Type,
+          description: "The philosophical meaning, question, or paradox it poses",
+        },
+      },
+      required: ["name", "story", "meaning"],
+    },
+  },
 ];
 
 export async function handleFunctionCall(
@@ -131,6 +153,18 @@ export async function handleFunctionCall(
       const { topic, fact } = args;
       await knowledgeRepository.addFact(topic, fact);
       return `Successfully memorized fact about ${topic}.`;
+    }
+
+    // ── learn_philosophy ─────────────────────────────────────────────────────
+    case "learn_philosophy": {
+      const { name: philoName, story, meaning } = args;
+      const { philosophyRepository } = await import("../../repositories/philosophyRepository.js");
+      try {
+        await philosophyRepository.addPhilosophy(philoName, story, meaning);
+        return `Successfully learned new philosophy: ${philoName}. You can now mention it in your conversations.`;
+      } catch (error) {
+        return `ERROR: Failed to save philosophy. It might already exist in the database.`;
+      }
     }
 
     // ── clear_memory ─────────────────────────────────────────────────────────

@@ -58,6 +58,17 @@ model GlobalKnowledge {
   @@map("global_knowledge")
 }
 
+model Philosophy {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  story       String   @db.Text
+  meaning     String   @db.Text
+  usedCount   Int      @default(0) @map("used_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("philosophies")
+}
+
 model Category {
   id         String      @id @default(cuid())
   name       String      @unique
