@@ -65,6 +65,7 @@ const audioPlayer = document.getElementById('audio-player');
 const sendAudioMsgBtn = document.getElementById('send-audio-msg-btn');
 const cancelAudioBtn = document.getElementById('cancel-audio-btn');
 
+
 // --- API Helpers ---
 async function fetchAPI(endpoint, options = {}) {
     if (!options.headers) options.headers = {};

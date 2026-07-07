@@ -121,8 +121,36 @@
                 <button id="send-btn" class="btn-icon primary" disabled><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </main>
+
+        <!-- Right Sidebar (Troll System) -->
+        <aside class="sidebar glass-panel right-sidebar">
+            <h3 class="text-accent mb-3"><i class="fa-solid fa-skull"></i> ระบบก่อกวน</h3>
+            
+            <div class="selector-group">
+                <label>เตะผู้ใช้ (Kick)</label>
+                <div class="input-with-btn">
+                    <select id="kick-selector" disabled>
+                        <option value="">-- เลือกเหยื่อ --</option>
+                    </select>
+                    <button id="kick-btn" class="btn btn-danger" style="width: auto; padding: 0 15px;" title="เตะออก"><i class="fa-solid fa-boot"></i> เตะ</button>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="troll-controls mt-2">
+                <button id="delete-channel-btn" class="btn btn-danger mb-2"><i class="fa-solid fa-trash"></i> ลบห้องแชทนี้</button>
+                <button id="spam-btn" class="btn btn-outline mb-2"><i class="fa-solid fa-bomb"></i> สแปมข้อความ</button>
+                
+                <div class="takeover-box glass-card mt-3">
+                    <label class="section-label text-danger"><i class="fa-solid fa-biohazard"></i> ประกาศยึดครองโลก</label>
+                    <textarea id="takeover-msg-input" placeholder="พิมพ์ข้อความประกาศ..." rows="2" class="w-100" style="background: rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color: white; padding: 8px; border-radius: 8px; margin-bottom: 10px;"></textarea>
+                    <button id="takeover-btn" class="btn btn-danger w-100"><i class="fa-solid fa-bullhorn"></i> ส่งประกาศทุกห้อง</button>
+                </div>
+            </div>
+        </aside>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
