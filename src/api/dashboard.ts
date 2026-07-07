@@ -75,7 +75,7 @@ dashboardRouter.get("/channels/:guildId", async (req, res) => {
       .map(c => ({
         id: c.id,
         name: c.name,
-        type: c.isTextBased() ? 'text' : 'voice'
+        type: c.isVoiceBased() ? 'voice' : 'text'
       }));
     res.json({ channels });
   } catch (error) {
