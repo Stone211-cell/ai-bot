@@ -36,6 +36,9 @@ const cancelAttachmentBtn = document.getElementById('cancel-attachment-btn');
 
 const joinVoiceBtn = document.getElementById('join-voice-btn');
 const leaveVoiceBtn = document.getElementById('leave-voice-btn');
+const voiceActions = document.getElementById('voice-actions');
+const ttsInput = document.getElementById('tts-input');
+const ttsSendBtn = document.getElementById('tts-send-btn');
 
 // Troll Panel Elements
 const disguiseToggle = document.getElementById('disguise-toggle');
@@ -326,6 +329,7 @@ async function pollVoiceStatus() {
             voiceChannelSelector.value = channelId;
             joinVoiceBtn.classList.add('hidden');
             leaveVoiceBtn.classList.remove('hidden');
+            if (voiceActions) voiceActions.classList.remove('hidden');
             voiceStatusIndicator.style.color = 'var(--accent-color)';
             
             // หาชื่อห้อง
@@ -336,6 +340,7 @@ async function pollVoiceStatus() {
             voiceChannelSelector.value = '';
             joinVoiceBtn.classList.remove('hidden');
             leaveVoiceBtn.classList.add('hidden');
+            if (voiceActions) voiceActions.classList.add('hidden');
             voiceStatusIndicator.style.color = 'var(--text-secondary)';
             voiceStatusText.textContent = 'ไม่ได้อยู่ในห้องเสียง';
             joinVoiceBtn.disabled = true;
@@ -360,6 +365,7 @@ joinVoiceBtn.addEventListener('click', async () => {
         
         joinVoiceBtn.classList.add('hidden');
         leaveVoiceBtn.classList.remove('hidden');
+        if (voiceActions) voiceActions.classList.remove('hidden');
         pollVoiceStatus(); // update immediately
     } catch (e) {
         alert("เข้าห้องเสียงไม่สำเร็จ");
@@ -377,11 +383,36 @@ leaveVoiceBtn.addEventListener('click', async () => {
         
         leaveVoiceBtn.classList.add('hidden');
         joinVoiceBtn.classList.remove('hidden');
+        if (voiceActions) voiceActions.classList.add('hidden');
         joinVoiceBtn.disabled = false;
         pollVoiceStatus();
     } catch (e) {
         console.error(e);
     }
+});
+
+// --- TTS Control ---
+ttsSendBtn.addEventListener('click', async () => {
+    const text = ttsInput.value.trim();
+    if (!text) return;
+    
+    try {
+        ttsSendBtn.disabled = true;
+        await fetchAPI('/voice/speak', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guildId: currentGuild, text })
+        });
+        ttsInput.value = '';
+    } catch (e) {
+        alert("พูดไม่สำเร็จ");
+    } finally {
+        ttsSendBtn.disabled = false;
+    }
+});
+
+ttsInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') ttsSendBtn.click();
 });
 
 // --- Audio Record for Chat (Voice Message) ---

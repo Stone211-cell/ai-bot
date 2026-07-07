@@ -56,6 +56,15 @@
                     <button id="join-voice-btn" class="btn btn-outline" disabled>เชื่อมต่อ</button>
                     <button id="leave-voice-btn" class="btn btn-danger hidden">ตัดการเชื่อมต่อ</button>
                 </div>
+
+                <!-- TTS Section (Visible only when joined) -->
+                <div id="voice-actions" class="hidden mt-3 pt-3" style="border-top: 1px solid rgba(255,255,255,0.08);">
+                    <label class="section-label text-accent"><i class="fa-solid fa-comment-dots"></i> ให้ AI พูดสดๆ (TTS)</label>
+                    <div class="input-with-btn">
+                        <input type="text" id="tts-input" placeholder="พิมพ์ประโยคให้ AI พูด...">
+                        <button id="tts-send-btn" class="btn btn-primary" title="ส่งเสียงพูด"><i class="fa-solid fa-play"></i></button>
+                    </div>
+                </div>
             </div>
         </aside>
 
